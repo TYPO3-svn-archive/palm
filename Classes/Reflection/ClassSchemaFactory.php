@@ -56,6 +56,7 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 		if (!class_exists($className)) {
 			return NULL;
 		}
+
 		$classSchema = new Tx_Palm_Reflection_ClassSchema($className);
 		if (is_subclass_of($className, 'Tx_Extbase_DomainObject_AbstractEntity')) {
 			$classSchema->setModelType(Tx_Extbase_Reflection_ClassSchema::MODELTYPE_ENTITY);

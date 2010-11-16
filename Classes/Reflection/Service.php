@@ -27,8 +27,6 @@
  *
  * @package Palm
  * @subpackage Reflection
- * @version
- * @api
  */
 class Tx_Palm_Reflection_Service extends Tx_Extbase_Reflection_Service {
 
@@ -197,6 +195,8 @@ class Tx_Palm_Reflection_Service extends Tx_Extbase_Reflection_Service {
 	 * @return void
 	 */
 	protected function saveToCache() {
+		//TODO
+		return;
 		if (!is_object($this->cache)) {
 			throw new Tx_Palm_Reflection_Exception(
 				'A cache must be injected before initializing the Reflection Service.',

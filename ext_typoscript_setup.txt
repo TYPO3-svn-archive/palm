@@ -1,0 +1,29 @@
+config.tx_extbase {
+	objects {
+		Tx_Extbase_Reflection_Service {
+			className = Tx_Palm_Reflection_Service
+		}
+	}
+}
+
+palm = PAGE
+palm {
+	typeNum = 887776
+	config {
+		disableAllHeaderCode = 1
+		disableCharsetHeader = 1
+		disablePrefixComment = 1
+		no_cache = 1
+	}
+	10 = USER
+	10 {
+		userFunc = tx_extbase_core_bootstrap->run
+		extensionName = Palm
+		pluginName = Pi1
+		controller = Demo
+		action = index
+		switchableControllerActions {
+			Demo = index
+		}
+	}
+}

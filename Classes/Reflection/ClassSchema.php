@@ -191,15 +191,6 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	}
 
 
-	/**
-	 * Returns xmlValue
-	 *
-	 * @return array
-	 */
-	public function getXmlValue() {
-		//
-	}
-
 
 	/**
 	 * Returns the property names
@@ -228,6 +219,11 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	}
 
 
+	/**
+	 * Returns the xml element names for a specific property
+	 * @param string $propertyName
+	 * @return array
+	 */
 	public function getXmlElementNamesForProperty($propertyName) {
 		$xmlElementNames = Array();
 		if(isset($this->properties[$propertyName]['xml'])) {
@@ -241,6 +237,11 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	}
 
 
+	/**
+	 * Returns the xml attribute names for a specific property
+	 * @param string $propertyName
+	 * @return array
+	 */
 	public function getXmlAttributeNamesForProperty($propertyName) {
 		$xmlAttributeNames = Array();
 		if(isset($this->properties[$propertyName]['xml'])) {
@@ -254,20 +255,11 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	}
 
 
-	public function getXmlElementNameForProperty($propertyName, $valueType) {
-		if(!$this->hasXmlElementForProperty($propertyName, $valueType))
-			return null;
-		return $this->properties[$propertyName]['xml'][$valueType]['elementName'];
-	}
-
-
-	public function getXmlAttributeNameForProperty($propertyName, $valueType) {
-		if(!$this->hasXmlAttributeForProperty($propertyName, $valueType))
-			return null;
-		return $this->properties[$propertyName]['xml'][$valueType]['attributeName'];
-	}
-
-
+	/**
+	 * Returns the xml values for a specific property
+	 * @param string $propertyName
+	 * @return array
+	 */
 	public function getXmlValuesForProperty($propertyName) {
 		$xmlValues = Array();
 		if(isset($this->properties[$propertyName]['xml'])) {
@@ -281,109 +273,193 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	}
 
 
+	/**
+	 * Returns the xml element name for a specific property with specific value type
+	 * @param string $propertyName
+	 * @param string $valueType
+	 * @return null|string
+	 */
+	public function getXmlElementNameForProperty($propertyName, $valueType) {
+		if(!$this->isXmlElementForProperty($propertyName, $valueType))
+			return null;
+		return $this->properties[$propertyName]['xml'][$valueType]['elementName'];
+	}
+
+
+	/**
+	 * Returns the xml attribute name for a specific property with specific value type
+	 * @param string $propertyName
+	 * @param string $valueType
+	 * @return null|string
+	 */
+	public function getXmlAttributeNameForProperty($propertyName, $valueType) {
+		if(!$this->isXmlAttributeForProperty($propertyName, $valueType))
+			return null;
+		return $this->properties[$propertyName]['xml'][$valueType]['attributeName'];
+	}
+
+
+	/**
+	 * Returns the property name for a specific xml element
+	 * @param string $xmlElementName
+	 * @return null|string
+	 */
 	public function getPropertyNameForXmlElement($xmlElementName) {
-		if(!$this->hasPropertyForXmlElement($xmlElementName))
+		if(!$this->isPropertyForXmlElement($xmlElementName))
 			return null;
 		return $this->xmlElements[$xmlElementName]['propertyName'];
 	}
 
 
+	/**
+	 * Returns the property name for a specific xml attribute
+	 * @param string $xmlAttributeName
+	 * @return null|string
+	 */
 	public function getPropertyNameForXmlAttribute($xmlAttributeName) {
-		if(!$this->hasPropertyForXmlAttribute($xmlAttributeName))
+		if(!$this->isPropertyForXmlAttribute($xmlAttributeName))
 			return null;
 		return $this->xmlAttributes[$xmlAttributeName]['propertyName'];
 	}
 
 
+	/**
+	 * Returns the property name for a specific value type
+	 * @param string $valueType
+	 * @return null|string
+	 */
 	public function getPropertyNameForXmlValueType($valueType) {
-		if(!$this->hasPropertyForXmlValue($valueName))
+		if(!$this->isPropertyForXmlValue($valueName))
 			return null;
 		return $this->xmlValues[$valueType]['propertyName'];
 	}
 
 
+	/**
+	 * Returns the property type for a specific xml element
+	 * @param string $xmlElementName
+	 * @return null|string
+	 */
 	public function getPropertyTypeForXmlElement($xmlElementName) {
-		if(!$this->hasPropertyForXmlElement($xmlElementName))
+		if(!$this->isPropertyForXmlElement($xmlElementName))
 			return null;
 		return $this->xmlElements[$xmlElementName]['type'];
 	}
 
 
+	/**
+	 * Returns the property type for a specific xml attribute
+	 * @param string $xmlAttributeName
+	 * @return null|string
+	 */
 	public function getPropertyTypeForXmlAttribute($xmlAttributeName) {
-		if(!$this->hasPropertyForXmlAttribute($xmlAttributeName))
+		if(!$this->isPropertyForXmlAttribute($xmlAttributeName))
 			return null;
 		return $this->xmlAttributes[$xmlAttributeName]['type'];
 	}
 
 
-	public function getPropertyTypeForXmlValue($xmlElementName) {
-		if(!$this->hasPropertyForXmlElement($xmlElementName))
-			return null;
-		return $this->xmlValues[$xmlElementName]['type'];
-	}
-
-
+	/**
+	 * Returns the property description for a specific xml element
+	 * @param string $xmlElementName
+	 * @return null|string
+	 */
 	public function getPropertyDescriptionForXmlElement($xmlElementName) {
-		if(!$this->hasPropertyForXmlElement($xmlElementName))
+		if(!$this->isPropertyForXmlElement($xmlElementName))
 			return null;
 		return $this->xmlElements[$xmlElementName]['description'];
 	}
 
 
+	/**
+	 * Returns the property description for a specific xml attribute
+	 * @param string $xmlAttributeName
+	 * @return null|string
+	 */
 	public function getPropertyDescriptionForXmlAttribute($xmlAttributeName) {
-		if(!$this->hasPropertyForXmlAttribute($xmlAttributeName))
+		if(!$this->isPropertyForXmlAttribute($xmlAttributeName))
 			return null;
 		return $this->xmlAttributes[$xmlAttributeName]['description'];
 	}
 
 
-	public function getPropertyDescriptionForXmlValue($xmlElementName) {
-		if(!$this->hasPropertyForElement($xmlElementName))
-			return null;
-		return $this->xmlValues[$xmlElementName]['description'];
-	}
-
-
-	private function hasXmlNameForProperty($propertyName, $valueType) {
-		return array_key_exists($propertyName, $this->properties) && array_key_exists($valueType, $this->properties[$propertyName]['xml']);
-	}
-
-
-	private function hasElementForProperty($propertyName, $valueType) {
-		if(!$this->hasXmlNameForProperty($propertyName, $valueType))
-			return false;
-		return $this->properties[$propertyName][$valueType][1];
-	}
-
-
-	private function hasXmlAttributeForProperty($propertyName, $valueType) {
-		if(!$this->hasXmlNameForProperty($propertyName, $valueType))
-			return false;
-		return !$this->properties[$propertyName][$valueType][1] && !$this->properties[$propertyName][$valueType][2];
-	}
-
-
-	private function hasXmlValueForProperty($propertyName, $valueType) {
-		if(!$this->hasXmlNameForProperty($propertyName, $valueType))
-			return false;
-		return $this->properties[$propertyName][$valueType][2];
+	/**
+	 * Returns whether the given property has any xml binding
+	 * @param string $propertyName
+	 * @param string $valueType
+	 * @return boolean
+	 */
+	public function isXmlNameForProperty($propertyName) {
+		return array_key_exists($propertyName, $this->properties) && !empty($this->properties[$propertyName]['xml']);
 	}
 
 
 	/**
-	 * @param unknown_type $xmlElementName
+	 * Returns whether the given property with specific value type has any xml binding
+	 * @param string $propertyName
+	 * @param string $valueType
 	 * @return boolean
 	 */
-	private function hasPropertyForXmlElement($xmlElementName) {
+	public function isXmlNameForPropertyWithValueType($propertyName, $valueType) {
+		return array_key_exists($propertyName, $this->properties) && !empty($this->properties[$propertyName]['xml']) && array_key_exists($valueType, $this->properties[$propertyName]['xml']);
+	}
+
+
+	/**
+	 * Returns whether the given property has any xml element for the specific value type
+	 * @param string $propertyName
+	 * @param string $valueType
+	 * @return boolean
+	 */
+	public function isXmlElementForProperty($propertyName, $valueType) {
+		if(!$this->isXmlNameForPropertyWithValueType($propertyName, $valueType))
+			return false;
+		return isset($this->properties[$propertyName]['xml'][$valueType]['elementName']);
+	}
+
+
+	/**
+	 * Returns whether the given property has any xml attribute for the specific value type
+	 * @param string $propertyName
+	 * @param string $valueType
+	 * @return boolean
+	 */
+	public function isXmlAttributeForProperty($propertyName, $valueType) {
+		if(!$this->isXmlNameForPropertyWithValueType($propertyName, $valueType))
+			return false;
+		return isset($this->properties[$propertyName]['xml'][$valueType]['attributeName']);
+	}
+
+
+	/**
+	 * Returns whether the given property has an xml value binding for the specific value type
+	 * @param string $propertyName
+	 * @param string $valueType
+	 * @return boolean
+	 */
+	public function isXmlValueForProperty($propertyName, $valueType) {
+		if(!$this->isXmlNameForPropertyWithValueType($propertyName, $valueType))
+			return false;
+		return isset($this->properties[$propertyName]['xml'][$valueType]['isValue']);
+	}
+
+
+	/**
+	 * Returns whether a specific xml element has a property binding
+	 * @param string $xmlElementName
+	 * @return boolean
+	 */
+	public function isPropertyForXmlElement($xmlElementName) {
 		return array_key_exists($xmlElementName, $this->xmlElements);
 	}
 
 
 	/**
-	 * @param unknown_type $xmlAttributeName
+	 * Returns whether a specific xml attribute has a property binding
+	 * @param string $xmlAttributeName
 	 * @return boolean
 	 */
-	private function hasPropertyForXmlAttribute($xmlAttributeName) {
+	public function isPropertyForXmlAttribute($xmlAttributeName) {
 		return array_key_exists($xmlAttributeName, $this->xmlAttributes);
 	}
 

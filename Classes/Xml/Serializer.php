@@ -30,21 +30,15 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 		$this->reflectionService = $reflectionService;
 	}
 
-	/**
-	 * Injector Method for schema generator
-	 * @param Tx_Palm_Xml_SchemaGenerator $schemaGenerator
-	 */
-	public function injectSchemaGenerator(Tx_Palm_Xml_SchemaGenerator $schemaGenerator) {
-		$this->schemaGenerator = $schemaGenerator;
-	}
 
 	/**
 	 * @param Object $obj
 	 * @return DOMDocument
 	 */
 	function serialize($obj) {
-		$doc = $this->objectManager->create('DOMDocument');
-		$root = $doc->createElement(Tx_Palm_Xml_ClassMetaStore::getMeta($obj)->getXmlRoot());
+		$classSchema = $this->reflectionService->getClassSchema($obj);
+		$doc = $this->objectManager->create('Tx_Palm_DOM_Document');
+		$root = $doc->createElement($classSchema->getXmlRootName());
 		$this->serializeObject($obj, $root);
 		$doc->appendChild($root);
 		return $doc;
@@ -55,43 +49,42 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	 * @param Object $obj
 	 * @param DOMElement $target
 	 */
-	private function serializeObject($obj, DOMElement $target) {
-		$meta = Tx_Palm_Xml_ClassMetaStore::getMeta($obj);
-
-		foreach($meta->getPropertyNames() as $propName) {
-			$value = $meta->getPropertyValue($obj, $propName);
-
-			if(is_array($value) || $value instanceof Traversable) {
-				foreach($value as $key => $item) {
-//					if(!is_int($key))
-//						throw new RuntimeException("Collections with associative indexing cannot be serialized");
-					$this->serializeProperty($meta, $propName, $item, $target);
+	protected function serializeObject($obj, DOMElement $target) {
+		$classSchema = $this->reflectionService->getClassSchema($obj);
+		foreach($classSchema->getPropertyNames() as $propName) {
+			if($classSchema->isXmlNameForProperty($propName)) {
+				$propertyConfig = $classSchema->getProperty($propName);
+				$value = Tx_Extbase_Reflection_ObjectAccess::getProperty($obj, $propName);
+				if($propertyConfig['type'] == 'Tx_Extbase_Persistence_ObjectStorage' || is_subclass_of($propertyConfig['type'], 'Tx_Extbase_Persistence_ObjectStorage')) {
+					foreach($value as $key => $item) {
+						$this->serializeProperty($classSchema, $propName, $item, $target);
+					}
+				} else {
+					$this->serializeProperty($classSchema, $propName, $value, $target);
 				}
-			} else {
-				$this->serializeProperty($meta, $propName, $value, $target);
 			}
 		}
 	}
 
 
 	/**
-	 * @param Tx_Palm_Xml_ClassMeta $meta
+	 * @param Tx_Palm_Reflection_ClassSchema $classSchema
 	 * @param string $propName
-	 * @param unknown_type $value
+	 * @param unknown $value
 	 * @param DOMElement $target
 	 */
-	private function serializeProperty(Tx_Palm_Xml_ClassMeta $meta, $propName, $value, DOMElement $target) {
+	protected function serializeProperty(Tx_Palm_Reflection_ClassSchema $classSchema, $propName, $value, DOMElement $target) {
 		if($value === null)
 			return;
 
 		$valueType = $this->getValueType($value);
 
-		$attrName = $meta->getAttributeName($propName, $valueType);
+		$attrName = $classSchema->getXmlAttributeNameForProperty($propName, $valueType);
 		if($attrName) {
 			$target->setAttribute($attrName, $this->formatAtomicValue($value));
 		}
 
-		$elementName = $meta->getElementName($propName, $valueType);
+		$elementName = $classSchema->getXmlElementNameForProperty($propName, $valueType);
 		if($elementName) {
 			$child = $target->ownerDocument->createElement($elementName);
 			if($this->isObject($value)) {
@@ -103,23 +96,22 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 			$target->appendChild($child);
 		}
 
-		$valueElement = $meta->getValueName($propName, $valueType);
-		if($valueElement && !$elementName) {
+		if(!$elementName && $classSchema->isXmlValueForProperty($propName, $valueType)) {
 			$text = $this->formatAtomicValue($value);
 			$target->appendChild($target->ownerDocument->createTextNode($text));
 		}
 
 		if(!$attrName && !$elementName && !$valueElement) {
-			throw new RuntimeException("Don't know how to serialize value of type '$valueType' for property '$propName' of class '{$meta->getClassName()}'");
+			throw new RuntimeException("Don't know how to serialize value of type '$valueType' for property '$propName' of class '{$classSchema->getClassName()}'");
 		}
 	}
 
 
 	/**
-	 * @param unknown_type $value
+	 * @param unknown $value
 	 * @return string|string
 	 */
-	private function getValueType($value) {
+	protected function getValueType($value) {
 		if(is_object($value))
 			return get_class($value);
 		return gettype($value);
@@ -127,19 +119,19 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 
 
 	/**
-	 * @param unknown_type $value
+	 * @param unknown $value
 	 * @return boolean
 	 */
-	private function isObject($value) {
+	protected function isObject($value) {
 		return is_object($value) && !($value instanceof DateTime);
 	}
 
 
 	/**
-	 * @param unknown_type $value
-	 * @return string|unknown|string
+	 * @param unknown $value
+	 * @return string|DateTime|string
 	 */
-	private function formatAtomicValue($value) {
+	protected function formatAtomicValue($value) {
 		if(is_bool($value))
 			return $value ? "true" : "false";
 
@@ -158,8 +150,8 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	/**
 	 * Unserialization
 	 * @param DOMDocument $doc
-	 * @param unknown_type $className
-	 * @return unknown
+	 * @param string $className
+	 * @return Object
 	 */
 	function unserialize(DOMDocument $doc, $className) {
 		$result = $this->objectManager->create($className);
@@ -169,19 +161,19 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 
 
 	/**
-	 * @param unknown_type $obj
+	 * @param Object $obj
 	 * @param DOMElement $source
 	 */
-	private function unserializeObject($obj, DOMElement $source) {
-		$meta = Tx_Palm_Xml_ClassMetaStore::getMeta($obj);
+	protected function unserializeObject($obj, DOMElement $source) {
+		$classSchema = $this->reflectionService->getClassSchema($rootClassName);
 
 		$bag = array();
 
 		foreach($source->attributes as $attribute) {
-			$propName = $meta->getPropertyNameForAttribute($attribute->name);
+			$propName = $classSchema->getPropertyNameForAttribute($attribute->name);
 			if(!$propName)
 				continue;
-			$valueType = $meta->getPropertyTypeForAttribute($attribute->name);
+			$valueType = $classSchema->getPropertyTypeForAttribute($attribute->name);
 			$value = $this->parseAtomicValue($attribute->value, $valueType);
 			$this->addPropertyToBag($propName, $value, $bag);
 		}
@@ -189,10 +181,10 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 		foreach ($source->childNodes as $child) {
 			if(!($child instanceof DOMElement))
 				continue;
-			$propName = $meta->getPropertyNameForElement($child->tagName);
+			$propName = $classSchema->getPropertyNameForElement($child->tagName);
 			if(!$propName)
 				continue;
-			$valueType = $meta->getPropertyTypeForElement($child->tagName);
+			$valueType = $classSchema->getPropertyTypeForElement($child->tagName);
 			$isObject = !$this->isAtomicType($valueType);
 			$value = $isObject
 				? new $valueType
@@ -203,13 +195,13 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 		}
 
 		foreach($bag as $propName => $data) {
-			$currentValue = $meta->getPropertyValue($obj, $propName);
+			$currentValue = $classSchema->getPropertyValue($obj, $propName);
 			if(is_array($currentValue)) {
 				if(is_array($data)) {
-					$meta->setPropertyValue($obj, $propName, array_merge($currentValue, $data));
+					$classSchema->setPropertyValue($obj, $propName, array_merge($currentValue, $data));
 				} else {
 					array_push($currentValue, $data);
-					$meta->setPropertyValue($obj, $propName, $currentValue);
+					$classSchema->setPropertyValue($obj, $propName, $currentValue);
 				}
 			} elseif($currentValue instanceof ArrayAccess) {
 				if(is_array($data)) {
@@ -219,18 +211,18 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 					$currentValue[] = $data;
 				}
 			} else {
-				$meta->setPropertyValue($obj, $propName, is_array($data) ? $data[count($data) - 1] : $data);
+				$classSchema->setPropertyValue($obj, $propName, is_array($data) ? $data[count($data) - 1] : $data);
 			}
 		}
 	}
 
 
 	/**
-	 * @param unknown_type $name
-	 * @param unknown_type $value
+	 * @param string $name
+	 * @param unknown $value
 	 * @param array $bag
 	 */
-	private function addPropertyToBag($name, $value, array &$bag) {
+	protected function addPropertyToBag($name, $value, array &$bag) {
 		if(!array_key_exists($name, $bag)) {
 			$bag[$name] = $value;
 		} else {
@@ -244,10 +236,10 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 
 
 	/**
-	 * @param unknown_type $type
+	 * @param unknown $type
 	 * @return boolean
 	 */
-	private function isAtomicType($type) {
+	protected function isAtomicType($type) {
 		return $type == "string"
 			|| $type == "integer"
 			|| $type == "boolean"
@@ -257,11 +249,11 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 
 
 	/**
-	 * @param unknown_type $value
-	 * @param unknown_type $type
+	 * @param unknown $value
+	 * @param string $type
 	 * @return int|bool|double|DateTime
 	 */
-	private function parseAtomicValue($value, $type) {
+	protected function parseAtomicValue($value, $type) {
 		if($type == "integer")
 			return intval($value);
 
@@ -276,7 +268,6 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 
 		return $value;
 	}
-
 
 
 }
