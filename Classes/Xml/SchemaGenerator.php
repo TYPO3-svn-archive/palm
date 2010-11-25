@@ -5,6 +5,9 @@
 *  (c) 2010 Thomas Maroschik <tmaroschik@dfau.de>
 *  All rights reserved
 *
+*  This class is a mixup of the initial extbase class and the lexa-xml-serialization class meta
+*  All credits go to the v5 team and http://code.google.com/p/lexa-xml-serialization/.
+*
 *  This script is part of the TYPO3 project. The TYPO3 project is
 *  free software; you can redistribute it and/or modify
 *  it under the terms of the GNU General Public License as published by
@@ -23,7 +26,7 @@
 ***************************************************************/
 
 /**
- * A xsd generator
+ * A schema generator
  *
  * @version $Id$
  * @license http://www.gnu.org/licenses/lgpl.html GNU Lesser General Public License, version 3 or later

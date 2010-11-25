@@ -14,6 +14,16 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	protected $reflectionService;
 
 	/**
+	 * @var Tx_Extbase_Property_Mapper
+	 */
+	protected $propertyMapper;
+
+	/**
+	 * @var Tx_Extbase_Validation_ValidatorResolver
+	 */
+	protected $validatorResolver;
+
+	/**
 	 * Injector Method for object manager
 	 * @param Tx_Extbase_Object_ObjectManagerInterface $objectManager
 	 */
@@ -30,12 +40,28 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 		$this->reflectionService = $reflectionService;
 	}
 
+	/**
+	 * Injector Method for property mapper
+	 * @param Tx_Extbase_Property_Mapper $propertyMapper
+	 */
+	public function injectPropertyMapper(Tx_Extbase_Property_Mapper $propertyMapper) {
+		$this->propertyMapper = $propertyMapper;
+	}
+
+
+	/**
+	 * Injector Method for validator resolver
+	 * @param Tx_Extbase_Validation_ValidatorResolver $validatorResolver
+	 */
+	public function injectValidatorResolver(Tx_Extbase_Validation_ValidatorResolver $validatorResolver) {
+		$this->validatorResolver = $validatorResolver;
+	}
 
 	/**
 	 * @param Object $obj
 	 * @return DOMDocument
 	 */
-	function serialize($obj) {
+	public function serialize($obj) {
 		$classSchema = $this->reflectionService->getClassSchema($obj);
 		$doc = $this->objectManager->create('Tx_Palm_DOM_Document');
 		$root = $doc->createElement($classSchema->getXmlRootName());
@@ -53,9 +79,9 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 		$classSchema = $this->reflectionService->getClassSchema($obj);
 		foreach($classSchema->getPropertyNames() as $propName) {
 			if($classSchema->isXmlNameForProperty($propName)) {
-				$propertyConfig = $classSchema->getProperty($propName);
+				$propertyMeta = $classSchema->getProperty($propName);
 				$value = Tx_Extbase_Reflection_ObjectAccess::getProperty($obj, $propName);
-				if($propertyConfig['type'] == 'Tx_Extbase_Persistence_ObjectStorage' || is_subclass_of($propertyConfig['type'], 'Tx_Extbase_Persistence_ObjectStorage')) {
+				if($propertyMeta['type'] == 'Tx_Extbase_Persistence_ObjectStorage' || is_subclass_of($propertyMeta['type'], 'Tx_Extbase_Persistence_ObjectStorage')) {
 					foreach($value as $key => $item) {
 						$this->serializeProperty($classSchema, $propName, $item, $target);
 					}
@@ -74,8 +100,10 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	 * @param DOMElement $target
 	 */
 	protected function serializeProperty(Tx_Palm_Reflection_ClassSchema $classSchema, $propName, $value, DOMElement $target) {
-		if($value === null)
+		// This could be an issue, but if this field is required it should be required by a validator anyways
+		if(empty($value)) {
 			return;
+		}
 
 		$valueType = $this->getValueType($value);
 
@@ -101,7 +129,7 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 			$target->appendChild($target->ownerDocument->createTextNode($text));
 		}
 
-		if(!$attrName && !$elementName && !$valueElement) {
+		if(!$attrName && !$elementName && !$classSchema->isXmlValueForProperty($propName, $valueType)) {
 			throw new RuntimeException("Don't know how to serialize value of type '$valueType' for property '$propName' of class '{$classSchema->getClassName()}'");
 		}
 	}
@@ -153,85 +181,54 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	 * @param string $className
 	 * @return Object
 	 */
-	function unserialize(DOMDocument $doc, $className) {
-		$result = $this->objectManager->create($className);
-		$this->unserializeObject($result, $doc->documentElement);
-		return $result;
+	public function unserialize(DOMDocument $doc, $className) {
+		$source = $this->mapXmlToPropertyArray($doc->documentElement, $className);
+		$target = $this->objectManager->create($className);
+
+		$validator = $this->validatorResolver->getBaseValidatorConjunction($className);
+		var_dump($validator);
+
+		$this->propertyMapper->mapAndValidate(array_keys($source), $source, $target, array(), $validator);
+
+		return $target;
 	}
 
 
 	/**
-	 * @param Object $obj
 	 * @param DOMElement $source
+	 * @param string $className
 	 */
-	protected function unserializeObject($obj, DOMElement $source) {
-		$classSchema = $this->reflectionService->getClassSchema($rootClassName);
+	protected function mapXmlToPropertyArray(DOMElement $source, $class) {
+		$classSchema = $this->reflectionService->getClassSchema($class);
 
 		$bag = array();
 
 		foreach($source->attributes as $attribute) {
-			$propName = $classSchema->getPropertyNameForAttribute($attribute->name);
+			$propName = $classSchema->getPropertyNameForXmlAttribute($attribute->name);
 			if(!$propName)
 				continue;
-			$valueType = $classSchema->getPropertyTypeForAttribute($attribute->name);
+			$valueType = $classSchema->getPropertyTypeForXmlAttribute($attribute->name);
 			$value = $this->parseAtomicValue($attribute->value, $valueType);
-			$this->addPropertyToBag($propName, $value, $bag);
+			$bag[$propName] = $value;
 		}
 
 		foreach ($source->childNodes as $child) {
 			if(!($child instanceof DOMElement))
 				continue;
-			$propName = $classSchema->getPropertyNameForElement($child->tagName);
-			if(!$propName)
+			$propName = $classSchema->getPropertyNameForXmlElement($child->tagName);
+			$propertyMeta = $classSchema->getProperty($propName);
+			if(!$propName || !$propertyMeta)
 				continue;
-			$valueType = $classSchema->getPropertyTypeForElement($child->tagName);
+			$valueType = $classSchema->getPropertyTypeForXmlElement($child->tagName);
 			$isObject = !$this->isAtomicType($valueType);
 			$value = $isObject
-				? new $valueType
+				? $valueType
 				: $this->parseAtomicValue(trim($child->textContent), $valueType);
-			$this->addPropertyToBag($propName, $value, $bag);
 			if($isObject)
-				$this->unserializeObject($value, $child);
+				$bag[$propName] = $this->mapXmlToPropertyArray($child, $value);
 		}
 
-		foreach($bag as $propName => $data) {
-			$currentValue = $classSchema->getPropertyValue($obj, $propName);
-			if(is_array($currentValue)) {
-				if(is_array($data)) {
-					$classSchema->setPropertyValue($obj, $propName, array_merge($currentValue, $data));
-				} else {
-					array_push($currentValue, $data);
-					$classSchema->setPropertyValue($obj, $propName, $currentValue);
-				}
-			} elseif($currentValue instanceof ArrayAccess) {
-				if(is_array($data)) {
-					foreach($data as $item)
-						$currentValue[] = $item;
-				} else {
-					$currentValue[] = $data;
-				}
-			} else {
-				$classSchema->setPropertyValue($obj, $propName, is_array($data) ? $data[count($data) - 1] : $data);
-			}
-		}
-	}
-
-
-	/**
-	 * @param string $name
-	 * @param unknown $value
-	 * @param array $bag
-	 */
-	protected function addPropertyToBag($name, $value, array &$bag) {
-		if(!array_key_exists($name, $bag)) {
-			$bag[$name] = $value;
-		} else {
-			if(is_array($bag[$name])) {
-				array_push($bag[$name], $value);
-			} else {
-				$bag[$name] = array($bag[$name], $value);
-			}
-		}
+		return $bag;
 	}
 
 

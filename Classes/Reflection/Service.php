@@ -195,15 +195,12 @@ class Tx_Palm_Reflection_Service extends Tx_Extbase_Reflection_Service {
 	 * @return void
 	 */
 	protected function saveToCache() {
-		//TODO
-		return;
-		if (!is_object($this->cache)) {
+		if (!is_object($this->dataCache)) {
 			throw new Tx_Palm_Reflection_Exception(
 				'A cache must be injected before initializing the Reflection Service.',
-				1289412365
+				1289916950
 			);
 		}
-
 		$data = array();
 		$propertyNames = array(
 			'reflectedClassNames',
@@ -220,7 +217,7 @@ class Tx_Palm_Reflection_Service extends Tx_Extbase_Reflection_Service {
 		foreach ($propertyNames as $propertyName) {
 			$data[$propertyName] = $this->$propertyName;
 		}
-		$this->cache->set($this->getCacheKey(), $data);
+		$this->dataCache->set($this->cacheIdentifier, $data);
 	}
 
 

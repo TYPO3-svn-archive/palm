@@ -13,9 +13,10 @@ palm {
 		disableAllHeaderCode = 1
 		disableCharsetHeader = 1
 		disablePrefixComment = 1
-		no_cache = 1
+		# no_cache = 1
+		# additionalHeaders = content-type:text/xml
 	}
-	10 = USER
+	10 = USER_INT
 	10 {
 		userFunc = tx_extbase_core_bootstrap->run
 		extensionName = Palm
