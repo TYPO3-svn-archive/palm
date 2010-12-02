@@ -96,7 +96,7 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	/**
 	 * @param Tx_Palm_Reflection_ClassSchema $classSchema
 	 * @param string $propName
-	 * @param unknown $value
+	 * @param mixed $value
 	 * @param DOMElement $target
 	 */
 	protected function serializeProperty(Tx_Palm_Reflection_ClassSchema $classSchema, $propName, $value, DOMElement $target) {
@@ -136,7 +136,7 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 
 
 	/**
-	 * @param unknown $value
+	 * @param mixed $value
 	 * @return string|string
 	 */
 	protected function getValueType($value) {
@@ -147,7 +147,7 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 
 
 	/**
-	 * @param unknown $value
+	 * @param mixed $value
 	 * @return boolean
 	 */
 	protected function isObject($value) {
@@ -156,7 +156,7 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 
 
 	/**
-	 * @param unknown $value
+	 * @param mixed $value
 	 * @return string|DateTime|string
 	 */
 	protected function formatAtomicValue($value) {
@@ -182,88 +182,134 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	 * @return Object
 	 */
 	public function unserialize(DOMDocument $doc, $className) {
-		$source = $this->mapXmlToPropertyArray($doc->documentElement, $className);
+		$source = $this->mapXmlToArray($doc->documentElement, $className);
 		$target = $this->objectManager->create($className);
-
-		$validator = $this->validatorResolver->getBaseValidatorConjunction($className);
-		var_dump($validator);
-
+		$validator = $this->validatorResolver->createValidator('GenericObject');
 		$this->propertyMapper->mapAndValidate(array_keys($source), $source, $target, array(), $validator);
-
 		return $target;
 	}
 
 
 	/**
+	 * Maps the given DOMElement to an property mapper conform array
 	 * @param DOMElement $source
-	 * @param string $className
+	 * @param unknown_type $class
+	 * @return Ambigous <multitype:, number, boolean, DateTime, void, string>
 	 */
-	protected function mapXmlToPropertyArray(DOMElement $source, $class) {
+	protected function mapXmlToArray(DOMElement $source, $class) {
 		$classSchema = $this->reflectionService->getClassSchema($class);
 
 		$bag = array();
+		$potentialProperties = array();
 
 		foreach($source->attributes as $attribute) {
-			$propName = $classSchema->getPropertyNameForXmlAttribute($attribute->name);
-			if(!$propName)
-				continue;
-			$valueType = $classSchema->getPropertyTypeForXmlAttribute($attribute->name);
-			$value = $this->parseAtomicValue($attribute->value, $valueType);
-			$bag[$propName] = $value;
+			$potentialProperties[] = $attribute;
+		}
+		foreach($source->childNodes as $child) {
+			$potentialProperties[] = $child;
 		}
 
-		foreach ($source->childNodes as $child) {
-			if(!($child instanceof DOMElement))
+		foreach($potentialProperties as $potentialProperty) {
+			$propertyName	= null;
+			$propertyType	= null;
+			$nodeValue		= null;
+			switch($potentialProperty) {
+				case $potentialProperty instanceof DOMAttr:
+					$propertyName = $classSchema->getPropertyNameForXmlAttribute($potentialProperty->name);
+					$propertyType = $classSchema->getPropertyTypeForXmlAttribute($potentialProperty->name);
+					$nodeValue = $this->parseAtomicValue($potentialProperty->value, $propertyType);
+					break;
+				case $potentialProperty instanceof DOMElement:
+					$propertyName = $classSchema->getPropertyNameForXmlElement($potentialProperty->tagName);
+					if(!$propertyName) {
+						// Could this be a Wrapper Element?
+						$propertyName = $classSchema->getPropertyNameForXmlElementWrapper($potentialProperty->tagName);
+						$nodeValue = $this->mapXmlToArray($potentialProperty, $class);
+						// Skip the type parsing. Types are already parsed.
+						$bag[$propertyName] = $nodeValue[$propertyName];
+					} else {
+						$propertyType = $classSchema->getPropertyTypeForXmlElement($potentialProperty->tagName);
+						if($this->isAtomicType($propertyType)) {
+							$nodeValue = $this->parseAtomicValue($potentialProperty->textContent, $propertyType);
+						} elseif($propertyType) {
+							$nodeValue = $this->mapXmlToArray($potentialProperty, $propertyType);
+						}
+					}
+					break;
+//				case $potentialProperty instanceof DOMText:
+//					$potentialPropertyText = trim($property->wholeText);
+//					if(!empty($potentialPropertyText)) {
+//					}
+//					break;
+			}
+			if($propertyName && $propertyType) {
+				$propertyMetaData = $classSchema->getProperty($propertyName);
+				if($propertyType != $propertyMetaData['type']) {
+					// XML Type does not equal Model Type
+					if($propertyType != $propertyMetaData['elementType']) {
+						// Probably we're dealing with subclassed objects
+						$bag[$propertyName] = $nodeValue;
+					} elseif($propertyType == $propertyMetaData['elementType'] && in_array($propertyMetaData['type'], array('array', 'ArrayObject', 'Tx_Extbase_Persistence_ObjectStorage'))) {
+						// Oh, nice. We're dealing with a persistence storage
+						$bag[$propertyName][] = $nodeValue;
+					} else {
+						// TODO: Check what to do here. Potentially nothing
+					}
+				} else {
+					$bag[$propertyName] = $nodeValue;
+				}
+			} else {
 				continue;
-			$propName = $classSchema->getPropertyNameForXmlElement($child->tagName);
-			$propertyMeta = $classSchema->getProperty($propName);
-			if(!$propName || !$propertyMeta)
-				continue;
-			$valueType = $classSchema->getPropertyTypeForXmlElement($child->tagName);
-			$isObject = !$this->isAtomicType($valueType);
-			$value = $isObject
-				? $valueType
-				: $this->parseAtomicValue(trim($child->textContent), $valueType);
-			if($isObject)
-				$bag[$propName] = $this->mapXmlToPropertyArray($child, $value);
+			}
 		}
-
 		return $bag;
 	}
 
 
 	/**
-	 * @param unknown $type
+	 * @param mixed $type
 	 * @return boolean
 	 */
 	protected function isAtomicType($type) {
 		return $type == "string"
 			|| $type == "integer"
 			|| $type == "boolean"
-			|| $type == "double"
+			|| $type == "float"
 			|| $type == "DateTime";
 	}
 
 
 	/**
-	 * @param unknown $value
+	 * @param mixed $value
 	 * @param string $type
 	 * @return int|bool|double|DateTime
 	 */
 	protected function parseAtomicValue($value, $type) {
-		if($type == "integer")
-			return intval($value);
-
-		if($type == "boolean")
-			return strtolower($value) == "true" || intval($value) > 0;
-
-		if($type == "double")
-			return doubleval($value);
-
-		if($type == "DateTime")
-			return new DateTime($value);
-
-		return $value;
+		if(!$type) {
+			return;
+		}
+		switch ($type) {
+			case 'integer':
+				return (int) $value;
+			break;
+			case 'float':
+				return (float) $value;
+			break;
+			case 'boolean':
+				return (boolean) strtolower($value) == "true" || intval($value) > 0;
+			break;
+			case 'string':
+				return (string) $value;
+			break;
+			case $type === 'DateTime' || in_array('DateTime', class_parents($type)):
+				$dateParts = explode('-', $value);
+				if(strlen($dateParts[0]) < 4) {
+					$dateParts = array_reverse($dateParts);
+					$value = implode('-', $dateParts);
+				}
+				return $value;
+			break;
+		}
 	}
 
 

@@ -91,8 +91,9 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 				$description	= $this->reflectionService->getPropertyDescription($className, $propertyName);
 				foreach($xmlTagValues as $xmlTagValue) {
 					list($nodeType, $valueType, $nodeName) = preg_split('/\s*\(\s*|\s*\)\s*|\s*\,\s*/i', $xmlTagValue, 4, PREG_SPLIT_NO_EMPTY);
-					if(!isset($nodeType) || !in_array($nodeType, array('Element', 'Attribute', 'Value'))) {
-						throw new Tx_Palm_Reflection_Exception_InvalidXmlNodeType('Invalid xml node type "' . $nodeType . '" at ' . $className . '::' . $propertyName .  ' . Must be one of Element/Attribute/Value.', 1289409062);
+					// Attention! Wrapper has no valueType and Value no Node Name
+					if(!isset($nodeType) || !in_array($nodeType, array('Wrapper','Element', 'Attribute', 'Value'))) {
+						throw new Tx_Palm_Reflection_Exception_InvalidXmlNodeType('Invalid xml node type "' . $nodeType . '" at ' . $className . '::' . $propertyName .  ' . Must be one of Wrapper/Element/Attribute/Value.', 1289409062);
 					}
 					if(isset($propertyXmlConfiguration[$valueType])) {
 						throw new Tx_Palm_Reflection_Exception_DuplicateXmlTypeBinding('The value type "' . $valueType . '" is already bound to ' . $className . '::' . $propertyName , 1289559710);
@@ -101,6 +102,13 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 						$nodeName = $propertyName;
 					}
 					switch($nodeType) {
+						case 'Wrapper':
+							if(!empty($valueType)) {
+								$nodeName = $valueType;
+							}
+							$propertyXmlConfiguration['wrapperName'] = $nodeName;
+							$classSchema->addXmlElementWrapper($nodeName, $propertyName);
+							break;
 						case 'Element':
 							$propertyXmlConfiguration[$valueType] = Array(
 								'elementName'	=> $nodeName
@@ -116,7 +124,7 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 						case 'Value':
 							$propertyXmlConfiguration[$valueType] = Array(
 								'isValue'	=> true
-							);;
+							);
 							$classSchema->addXmlValue($valueType, $propertyName, $description);
 							break;
 					}

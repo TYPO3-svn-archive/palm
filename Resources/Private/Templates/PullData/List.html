@@ -1,0 +1,15 @@
+{namespace p=Tx_Palm_ViewHelpers}
+<f:layout name="default" />
+
+<f:section name="iconButtons">
+</f:section>
+
+<f:section name="content">
+	<h2>Merge Rules for "{entityName}"</h2>
+	<p:be.table tableData="{rules}" headerData="{0:'File Name', 1:'External Target'}">
+		<p:be.table.column index="0">
+			<f:be.buttons.icon uri="{f:uri.action(action:'selectRecord', arguments:{entityName:PalmColumnData})}" icon="add" />
+			<f:link.action action="selectRecord" arguments="{fileName:PalmColumnData}">{PalmColumnData}</f:link.action>
+		</p:be.table.column>
+	</p:be.table>
+</f:section>

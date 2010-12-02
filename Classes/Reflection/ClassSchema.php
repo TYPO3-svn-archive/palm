@@ -41,6 +41,13 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	protected $xmlRoot = Array();
 
 	/**
+	 * Child Element Wrappers of the Xml Element
+	 *
+	 * @var array
+	 */
+	protected $xmlElementWrappers = Array();
+
+	/**
 	 * Child Elements of the Xml Element
 	 *
 	 * @var array
@@ -83,6 +90,24 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 
 
 	/**
+	 * Adds (defines) a specific xml element wrapper.
+	 *
+	 * @param string $name Name of the xml element
+	 * @param string $propertyName name of the class property
+	 * @return void
+	 */
+	public function addXmlElementWrapper($name, $propertyName) {
+		if(array_key_exists($name, $this->xmlElements)) {
+			$definedElement = $this->xmlElementWrappers[$name];
+			throw new Tx_Palm_Reflection_Exception_DuplicateXmlElementWrapper('The xml element wrapper "' . $name .'" defined at ' . $this->className . '::' . $propertyName . ' is already defined at ' . $this->className . '::' . $definedElement['propertyName'], 1290779975);
+		}
+		$this->xmlElementWrappers[$name] = array(
+			'propertyName'	=> $propertyName,
+		);
+	}
+
+
+	/**
 	 * Adds (defines) a specific xml element and its type.
 	 *
 	 * @param string $name Name of the xml element
@@ -91,11 +116,12 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	 * @param string $description Description of the class property
 	 * @return void
 	 */
-	public function addXmlElement($name, $type, $propertyName, $description='') {
+	public function addXmlElement($name, $type, $propertyName, $description=null) {
 		if(array_key_exists($name, $this->xmlElements)) {
 			$definedElement = $this->xmlElements[$name];
 			throw new Tx_Palm_Reflection_Exception_DuplicateXmlElement('The xml element "' . $name .'" defined at ' . $this->className . '::' . $propertyName . ' is already defined at ' . $this->className . '::' . $definedElement['propertyName'], 1289410457);
 		}
+		$type = Tx_Extbase_Utility_TypeHandling::normalizeType($type);
 		$this->xmlElements[$name] = array(
 			'propertyName'	=> $propertyName,
 			'type'			=> $type,
@@ -113,11 +139,12 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	 * @param string $description Description of the class property
 	 * @return void
 	 */
-	public function addXmlAttribute($name, $type, $propertyName, $description='') {
+	public function addXmlAttribute($name, $type, $propertyName, $description=null) {
 		if(array_key_exists($name, $this->xmlAttributes)) {
 			$definedElement = $this->xmlAttributes[$name];
 			throw new Tx_Palm_Reflection_Exception_DuplicateXmlAttribute('The xml attribute "' . $name .'" defined at ' . $this->className . '::' . $propertyName . ' is already defined at ' . $this->className . '::' . $definedElement['propertyName'], 1289410831);
 		}
+		$type = Tx_Extbase_Utility_TypeHandling::normalizeType($type);
 		$this->xmlAttributes[$name] = array(
 			'propertyName'	=> $propertyName,
 			'type'			=> $type,
@@ -134,11 +161,12 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	 * @param string $description Description of the class property
 	 * @return void
 	 */
-	public function addXmlValue($valueType, $propertyName, $description='') {
+	public function addXmlValue($valueType, $propertyName, $description=null) {
 		if(!empty($this->xmlValues) && isset($this->xmlValues[$valueType])) {
 			$definedElement = $this->xmlValues[$valueType];
 			throw new Tx_Palm_Reflection_Exception_DuplicateXmlValueType('The xml value type "' . $valueType .'" defined at ' . $this->className . '::' . $propertyName . ' is already defined at ' . $this->className . '::' . $definedElement['propertyName'], 1289410839);
 		}
+		$valueType = Tx_Extbase_Utility_TypeHandling::normalizeType($valueType);
 		$this->xmlValues[$valueType] = array(
 			'propertyName'	=> $propertyName,
 			'description'	=> $description,
@@ -300,6 +328,18 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 
 
 	/**
+	 * Returns the property name for a specific xml element wrapper
+	 * @param string $xmlElementName
+	 * @return null|string
+	 */
+	public function getPropertyNameForXmlElementWrapper($xmlElementName) {
+		if(!$this->isPropertyForXmlElementWrapper($xmlElementName))
+			return null;
+		return $this->xmlElementWrappers[$xmlElementName]['propertyName'];
+	}
+
+
+	/**
 	 * Returns the property name for a specific xml element
 	 * @param string $xmlElementName
 	 * @return null|string
@@ -441,6 +481,16 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 		if(!$this->isXmlNameForPropertyWithValueType($propertyName, $valueType))
 			return false;
 		return isset($this->properties[$propertyName]['xml'][$valueType]['isValue']);
+	}
+
+
+	/**
+	 * Returns whether a specific xml element wrapper has a property binding
+	 * @param string $xmlElementName
+	 * @return boolean
+	 */
+	public function isPropertyForXmlElementWrapper($xmlElementName) {
+		return array_key_exists($xmlElementName, $this->xmlElementWrappers);
 	}
 
 

@@ -1,0 +1,16 @@
+{namespace p=Tx_Palm_ViewHelpers}
+<f:layout name="default" />
+
+<f:section name="iconButtons">
+</f:section>
+
+<f:section name="content">
+	<f:if condition="{pid}">
+		<p:be.table tableData="{entities}" headerData="{0:'Entity Name', 1:'Pull Instructions'}">
+			<p:be.table.column index="0" tableData="{PalmTableData}">
+				<f:be.buttons.icon uri="{f:uri.action(action:'list', arguments:{entityName:PalmColumnData})}" icon="add" />
+				<f:link.action action="list" arguments="{entityName:PalmColumnData}">{PalmColumnData}</f:link.action>
+			</p:be.table.column>
+		</p:be.table>
+	</f:if>
+</f:section>
