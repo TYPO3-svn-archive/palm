@@ -39,6 +39,16 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 	protected $ruleBuilder;
 
 	/**
+	 * @var Tx_Palm_Xml_Serializer
+	 */
+	protected $xmlSerializer;
+
+	/**
+	 * @var Tx_Extbase_Reflection_Service
+	 */
+	protected $reflectionService;
+
+	/**
 	 * Injector method for an object manager
 	 *
 	 * @param Tx_Extbase_Object_ObjectManagerInterface $objectManager
@@ -59,6 +69,25 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 
 
 	/**
+	 * Injector method for a xml serializer
+	 *
+	 * @param Tx_Palm_Xml_Serializer $xmlSerializer
+	 */
+	public function injectXmlSerializer(Tx_Palm_Xml_Serializer $xmlSerializer) {
+		$this->xmlSerializer = $xmlSerializer;
+	}
+
+
+	/**
+	 * Injector method for a reflection service
+	 *
+	 * @param Tx_Extbase_Reflection_Service $reflectionService
+	 */
+	public function injectReflectionService(Tx_Extbase_Reflection_Service $reflectionService) {
+		$this->reflectionService = $reflectionService;
+	}
+
+	/**
 	 * Constructor method for the merger service
 	 */
 	public function __construct() {
@@ -69,6 +98,7 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 			}
 		}
 		$this->pullRules = t3lib_div::makeInstance('Tx_Extbase_Persistence_ObjectStorage');
+		$this->loadedDOMs = t3lib_div::makeInstance('Tx_Extbase_Persistence_ObjectStorage');
 	}
 
 
@@ -86,16 +116,31 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 		}
 	}
 
-	protected function initializeDomForRule(Tx_Palm_Merger_Rule $rule) {
+	/**
+	 * Enter description here ...
+	 * @param Tx_Palm_Merger_AbstractRule $rule
+	 */
+	protected function initializeDomForRule(Tx_Palm_Merger_AbstractRule $rule) {
+		if ($this->pullRules->offsetGet($rule) instanceof Tx_Palm_Merger_AbstractRule) {
+			return;
+		}
 		$dom = $this->objectManager->create('Tx_Palm_DOM_Document');
 		$dom->load(t3lib_div::getFileAbsFileName($rule->getFileLocation()));
+		$this->pullRules->offsetSet($rule, $dom);
 	}
 
-
+	/**
+	 * Enter description here ...
+	 * @return multitype:
+	 */
 	public function getPullConfiguration() {
 		return $this->configuration['pull'];
 	}
 
+	/**
+	 * Enter description here ...
+	 * @return Ambigous <multitype:, number>
+	 */
 	public function getPullableEntities() {
 		$this->initializePullRules();
 		$entities = Array();
@@ -108,6 +153,11 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 		return $entities;
 	}
 
+	/**
+	 * Enter description here ...
+	 * @param unknown_type $entityName
+	 * @return Ambigous <multitype:, unknown>
+	 */
 	public function getPullRulesByEntityName($entityName) {
 		$this->initializePullRules();
 		$rules = Array();
@@ -119,6 +169,11 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 		return $rules;
 	}
 
+	/**
+	 * Enter description here ...
+	 * @param unknown_type $fileLocation
+	 * @return Ambiguous
+	 */
 	public function getPullRuleByFileLocation($fileLocation) {
 		$this->initializePullRules();
 		foreach ($this->pullRules as $rule) {
@@ -128,32 +183,58 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 		}
 	}
 
+	/**
+	 * Enter description here ...
+	 * @return Tx_Extbase_Persistence_ObjectStorage
+	 */
 	public function getPullRules() {
 		$this->initializePullRules();
 		return $this->pullRules;
 	}
 
-	protected function getDOMByRule(Tx_Palm_Merger_Rule $rule) {
+	/**
+	 * Enter description here ...
+	 * @param Tx_Palm_Merger_AbstractRule $rule
+	 * @return mixed
+	 */
+	protected function getDOMByRule(Tx_Palm_Merger_AbstractRule $rule) {
 		$this->initializeDOMForRule($rule);
+		return $this->pullRules->offsetGet($rule);
 	}
 
-	public function chefIfRuleIsApplicableOnEntity(Tx_Palm_Merger_Rule $rule, Tx_Extbase_DomainObject_AbstractDomainObject $entity) {
-		$dom = $this->getDOMByRule($rule);
+	/**
+	 * Enter description here ...
+	 * @param Tx_Palm_Merger_AbstractRule $rule
+	 * @param Tx_Extbase_DomainObject_AbstractDomainObject $entity
+	 * @return mixed
+	 */
+	protected function getResolvedSinglePathInCollection(Tx_Palm_Merger_RootRule $rule, Tx_Extbase_DomainObject_AbstractDomainObject $entity) {
 		$internalPropertyPath = $this->getPropertyPathFromRule($rule);
 		$internalPropertyValue = Tx_Extbase_Reflection_ObjectAccess::getPropertyPath($entity, $internalPropertyPath);
-		$externalPath = str_replace('{' . $internalPropertyPath . '}', $internalPropertyValue, $rule->getExternalPath());
-		var_dump($externalPath);
-		return true;
+		return str_replace('{' . $internalPropertyPath . '}', $internalPropertyValue, $rule->getSinglePathInCollection());
+	}
+
+	/**
+	 * Enter description here ...
+	 * @param Tx_Palm_Merger_AbstractRule $rule
+	 * @param Tx_Extbase_DomainObject_AbstractDomainObject $entity
+	 * @return boolean
+	 */
+	public function isRuleApplicableOnEntity(Tx_Palm_Merger_AbstractRule $rule, Tx_Extbase_DomainObject_AbstractDomainObject $entity) {
+		$dom = $this->getDOMByRule($rule);
+		$xpath = $this->objectManager->create('DOMXPath', $dom);
+		$externalPath = $this->getResolvedSinglePathInCollection($rule, $entity);
+		return (bool) $xpath->query($externalPath)->length;
 	}
 
 	/**
 	 * Enter description here ...
 	 *
-	 * @param Tx_Palm_Merger_Rule $rule
+	 * @param Tx_Palm_Merger_AbstractRule $rule
 	 * @return string
 	 */
-	protected function getPropertyPathFromRule(Tx_Palm_Merger_Rule $rule) {
-		preg_match('|(?<=\{)(.*)(?=\})|', $rule->getExternalPath(), $entityPropertyPath);
+	public function getPropertyPathFromRule(Tx_Palm_Merger_AbstractRule $rule) {
+		preg_match('|(?<=\{)(.*)(?=\})|', $rule->getSinglePathInCollection(), $entityPropertyPath);
 		$entityPropertyPath = current($entityPropertyPath);
 		if(!$entityPropertyPath) {
 			// TODO throw some exception
@@ -161,6 +242,185 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 		return $entityPropertyPath;
 	}
 
+
+	/**
+	 * Enter description here ...
+	 * @param Tx_Extbase_DomainObject_AbstractDomainObject $entity
+	 * @param Tx_Palm_Merger_AbstractRule $rule
+	 */
+	public function mergeByRule(Tx_Extbase_DomainObject_AbstractDomainObject $entity, Tx_Palm_Merger_AbstractRule $rule) {
+		if(!$this->isRuleApplicableOnEntity($rule, $entity)) {
+			// TODO throw exception that this rule is not applicable
+		}
+
+		$dom = $this->getDOMByRule($rule);
+		$xpath = $this->objectManager->create('DOMXPath', $dom);
+		$externalPath = $this->getResolvedSinglePathInCollection($rule, $entity);
+
+		$result = $xpath->query($externalPath);
+		if($result->length > 1) {
+			// TODO throw exception that result is not distinct
+		}
+
+		$doc = $this->objectManager->create('Tx_Palm_DOM_Document');
+		$doc->appendChild($doc->importNode($result->item(0), true));
+
+		$externalEntity = $this->xmlSerializer->unserialize($doc, $rule->getEntityName());
+
+		$this->mergeEntitiesByRule($externalEntity, $entity, $rule);
+	}
+
+
+	/**
+	 * Enter description here ...
+	 * @param Tx_Extbase_DomainObject_AbstractDomainObject $externalEntity
+	 * @param Tx_Extbase_DomainObject_AbstractDomainObject $internalEntity
+	 * @param Tx_Palm_Merger_AbstractRule $rule
+	 */
+	protected function mergeEntitiesByRule(Tx_Extbase_DomainObject_AbstractDomainObject $externalEntity, Tx_Extbase_DomainObject_AbstractDomainObject $internalEntity, Tx_Palm_Merger_AbstractRule $rule) {
+		$nestedRules = Array();
+		foreach ($rule->getNestedRules() as $nestedRule) {
+			$nestedRules[$nestedRule->getWorkOn()] = $nestedRule;
+		}
+
+		$classSchema = $this->reflectionService->getClassSchema($internalEntity);
+		$properties = $classSchema->getProperties();
+		$propertyNames = array_keys($properties);
+
+		foreach ($propertyNames as $propertyName) {
+			if(in_array($propertyName, array('uid','pid','_localizedUid', '_languageUid', '_cleanProperties', '_isClone'))) {
+				continue;
+			}
+
+			$action 			= null;
+			$externalProperty	= Tx_Extbase_Reflection_ObjectAccess::getProperty($externalEntity, $propertyName);
+			$internalProperty	= Tx_Extbase_Reflection_ObjectAccess::getProperty($internalEntity, $propertyName);
+			$scope				= $this->determineScope($classSchema, $propertyName);
+			$specificRule		= (isset($nestedRules[$propertyName])) ? $nestedRules[$propertyName] : $rule;
+			$action				= $this->determineAction($specificRule, $scope, $externalProperty, $internalProperty);
+			if($action === null) continue;
+
+			$this->executeAction($specificRule, $propertyName, $scope, $action, $externalEntity, $externalProperty, $internalEntity, $internalProperty);
+		}
+	}
+
+
+	protected function determineScope(Tx_Extbase_Reflection_ClassSchema $classSchema, $propertyName) {
+		$propertyMetaData = $classSchema->getProperty($propertyName);
+		if (in_array($propertyMetaData['type'], array('array', 'ArrayObject', 'SplObjectStorage', 'Tx_Extbase_Persistence_ObjectStorage'))) {
+			return self::GETTER_SCOPE_COLLECTION;
+		} elseif(strpos($propertyMetaData['type'], '_') !== false/* && is_subclass_of($propertyMetaData['type'], 'Tx_Extbase_DomainObject_DomainObjectInterface')*/) {
+			return self::GETTER_SCOPE_OBJECT;
+		} else {
+			return self::GETTER_SCOPE_PROPERTY;
+		}
+	}
+
+
+	protected function determineAction(Tx_Palm_Merger_AbstractRule $specificRule, $scope, $externalProperty, $internalProperty) {
+		if($scope == self::GETTER_SCOPE_COLLECTION) {
+			$existence  = ($externalProperty instanceof Tx_Extbase_Persistence_ObjectStorage && $externalProperty->count() > 0) ? 1 : 0;
+			$existence .= ($internalProperty instanceof Tx_Extbase_Persistence_ObjectStorage && $internalProperty->count() > 0) ? 1 : 0;
+		} else {
+			$existence  = ($externalProperty) ? 1 : 0;
+			$existence .= ($internalProperty) ? 1 : 0;
+		}
+		switch($existence) {
+			case '00':
+				// Nothing to merge. Continue with next property
+				return;
+				break;
+			case '10':
+				return call_user_func(array($specificRule, 'getOnInternal' . $scope . 'Empty'));
+				break;
+			case '01':
+				return call_user_func(array($specificRule, 'getOnExternal' . $scope . 'Empty'));
+				break;
+			case '11':
+				return call_user_func(array($specificRule, 'getOnBoth' . $scope . 'NotEmpty'));
+				break;
+		}
+	}
+
+
+	protected function executeAction(Tx_Palm_Merger_AbstractRule $specificRule, $propertyName, $scope, $action, $externalEntity, $externalProperty, $internalEntity, $internalProperty) {
+//		var_dump(get_class($internalEntity), $propertyName, $action);
+		switch($action) {
+			case Tx_Palm_Merger_RuleInterface::ACTION_KEEP:
+				// Do nothing
+				break;
+			case Tx_Palm_Merger_RuleInterface::ACTION_TAKE_EXTERNAL:
+				Tx_Extbase_Reflection_ObjectAccess::setProperty($internalEntity, $propertyName, $externalProperty);
+				break;
+			case Tx_Palm_Merger_RuleInterface::ACTION_DELETE:
+				Tx_Extbase_Reflection_ObjectAccess::setProperty($internalEntity, $propertyName, null);
+				break;
+			case Tx_Palm_Merger_RuleInterface::ACTION_MATCH_INDIVIDUAL:
+				if($scope === self::GETTER_SCOPE_OBJECT) {
+					$this->mergeEntitiesByRule($externalProperty, $internalProperty, $specificRule);
+				} elseif ($scope === self::GETTER_SCOPE_COLLECTION) {
+					$matchOns = t3lib_div::trimExplode(',', $specificRule->getMatchOn());
+					if(!empty($matchOns) && !in_array('.', $matchOns)) {
+						$entityReference = array();
+						foreach($externalProperty as $entity) {
+							$referenceValue = '';
+							foreach($matchOns as $matchOn) {
+								$reference = Tx_Extbase_Reflection_ObjectAccess::getPropertyPath($entity, $matchOn);
+								if (is_object($reference) && $reference instanceof DateTime) {
+									$referenceValue .= $reference->format("o-m-d\TH:i:s\Z");
+								} elseif(is_object($reference)) {
+									// TODO Throw exception
+								} else {
+									$referenceValue .= $reference;
+								}
+							}
+							if($referenceValue) {
+								$entityReference[$referenceValue] = array('external' => $entity);
+							}
+						}
+						foreach($internalProperty as $entity) {
+							$referenceValue = '';
+							foreach($matchOns as $matchOn) {
+								$reference = Tx_Extbase_Reflection_ObjectAccess::getPropertyPath($entity, $matchOn);
+								if (is_object($reference) && $reference instanceof DateTime) {
+									$referenceValue .= $reference->format("o-m-d\TH:i:s\Z");
+								} elseif(is_object($reference)) {
+									// TODO Throw exception
+								} else {
+									$referenceValue .= $reference;
+								}
+							}
+							if($referenceValue) {
+								if(is_array($entityReference[$referenceValue])) {
+									$entityReference[$referenceValue]['internal'] = $entity;
+								} else {
+									$entityReference[$referenceValue] = array('internal' => $entity);
+								}
+							}
+						}
+						foreach($entityReference as $entityMap) {
+							$entityAction = $this->determineAction($specificRule, self::GETTER_SCOPE_OBJECT, $entityMap['external'], $entityMap['internal']);
+//							var_dump($entityMap, $entityAction);
+							switch ($entityAction) {
+								case Tx_Palm_Merger_RuleInterface::ACTION_KEEP:
+									// Do nothing
+									break;
+								case Tx_Palm_Merger_RuleInterface::ACTION_TAKE_EXTERNAL:
+//									$internalProperty->attach($entityMap['external']);
+									break;
+								case Tx_Palm_Merger_RuleInterface::ACTION_DELETE:
+//									$internalProperty->deteach($entityMap['internal']);
+									break;
+								case Tx_Palm_Merger_RuleInterface::ACTION_MATCH_INDIVIDUAL:
+//									$this->mergeEntitiesByRule($entityMap['external'], $entityMap['internal'], $specificRule);
+									break;
+							}
+						}
+					}
+				}
+				break;
+		}
+	}
 
 }
 ?>

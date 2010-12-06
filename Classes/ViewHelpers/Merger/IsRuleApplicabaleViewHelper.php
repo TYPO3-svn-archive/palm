@@ -16,7 +16,7 @@
 /**
  *
  */
-class Tx_Palm_ViewHelpers_Merger_CheckIfRuleIsApplicabaleViewHelper extends Tx_Fluid_Core_ViewHelper_AbstractViewHelper {
+class Tx_Palm_ViewHelpers_Merger_isRuleApplicabaleViewHelper extends Tx_Fluid_Core_ViewHelper_AbstractViewHelper {
 
 
 	/**
@@ -41,8 +41,8 @@ class Tx_Palm_ViewHelpers_Merger_CheckIfRuleIsApplicabaleViewHelper extends Tx_F
 	 * @param Tx_Extbase_DomainObject_AbstractDomainObject $item
 	 * @return boolean
 	 */
-	public function render(Tx_Palm_Merger_Rule $rule, Tx_Extbase_DomainObject_AbstractDomainObject $item) {
-		return (bool) $this->mergerService->chefIfRuleIsApplicableOnEntity($rule, $item);
+	public function render(Tx_Palm_Merger_RootRule $rule, Tx_Extbase_DomainObject_AbstractDomainObject $item) {
+		return (bool) $this->mergerService->isRuleApplicableOnEntity($rule, $item);
 	}
 }
 

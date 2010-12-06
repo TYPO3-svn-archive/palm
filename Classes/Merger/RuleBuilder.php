@@ -18,6 +18,12 @@ class Tx_Palm_Merger_RuleBuilder implements t3lib_Singleton {
 		$this->objectManager = $objectManager;
 	}
 
+	/**
+	 * Enter description here ...
+	 *
+	 * @param array $ruleConfiguration
+	 * @return null|Tx_Palm_Merger_Rule
+	 */
 	public function build(array $ruleConfiguration) {
 		if (!isset($ruleConfiguration[Tx_Palm_Merger_ServiceInterface::FILE_LOCATION]) && !isset($ruleConfiguration[Tx_Palm_Merger_ServiceInterface::ENTITY_NAME])) {
 			return;
@@ -25,17 +31,19 @@ class Tx_Palm_Merger_RuleBuilder implements t3lib_Singleton {
 
 		$fileLocation = $ruleConfiguration[Tx_Palm_Merger_ServiceInterface::FILE_LOCATION];
 		$entityName = $ruleConfiguration[Tx_Palm_Merger_ServiceInterface::ENTITY_NAME];
+		$singlePathInCollection = $ruleConfiguration[Tx_Palm_Merger_ServiceInterface::SINGLE_PATH_IN_COLLECTION];
 
 		$possibleRepositoryClassName = str_replace('_Model_', '_Repository_', $entityName) . 'Repository';
 		if (!class_exists($possibleRepositoryClassName)) {
-			return;
+			return null;
 		}
 
-		foreach ($ruleConfiguration as $ruleDirective) {
-			if (is_array($ruleDirective) && !empty($ruleDirective)) {
-				$rule = $this->buildRule($ruleDirective);
+		foreach ($ruleConfiguration as $workOn=>$directive) {
+			if (is_array($directive) && !empty($directive)) {
+				$rule = $this->buildRule($workOn, $directive);
 				$rule->setEntityName($entityName);
 				$rule->setFileLocation($fileLocation);
+				$rule->setSinglePathInCollection($singlePathInCollection);
 				return $rule;
 			}
 		}
@@ -45,39 +53,41 @@ class Tx_Palm_Merger_RuleBuilder implements t3lib_Singleton {
 	/**
 	 * Build a rule
 	 *
+	 * @param string $workOn
 	 * @param array $ruleDirective
+	 * @param array $parentRuleSet
 	 * @return Tx_Palm_Merger_Rule
 	 */
-	protected function buildRule(array $ruleDirective) {
-		$rule = $this->objectManager->create('Tx_Palm_Merger_Rule');
-		if(isset($ruleDirective[Tx_Palm_Merger_RuleInterface::MATCH_INTERNAL_PATH])) {
-			$rule->setInternalPath($ruleDirective[Tx_Palm_Merger_RuleInterface::MATCH_INTERNAL_PATH]);
-			unset($ruleDirective[Tx_Palm_Merger_RuleInterface::MATCH_INTERNAL_PATH]);
+	protected function buildRule($workOn, array $ruleDirective, array $parentRuleSet = array()) {
+		if(empty($parentRuleSet)) {
+			$rule = $this->objectManager->create('Tx_Palm_Merger_RootRule');
+		} else {
+			$rule = $this->objectManager->create('Tx_Palm_Merger_Rule');
 		}
-		if(isset($ruleDirective[Tx_Palm_Merger_RuleInterface::MATCH_EXTERNAL_PATH])) {
-			$rule->setExternalPath($ruleDirective[Tx_Palm_Merger_RuleInterface::MATCH_EXTERNAL_PATH]);
-			unset($ruleDirective[Tx_Palm_Merger_RuleInterface::MATCH_EXTERNAL_PATH]);
+		$ruleSet = Array(
+			'matchOn'					=> $ruleDirective[Tx_Palm_Merger_RuleInterface::MATCH_ON],
+			'onExternalPropertyEmpty'	=> $ruleDirective[Tx_Palm_Merger_RuleInterface::ON_EXTERNAL_PROPERTY_EMPTY],
+			'onInternalPropertyEmpty'	=> $ruleDirective[Tx_Palm_Merger_RuleInterface::ON_INTERNAL_PROPERTY_EMPTY],
+			'onBothPropertyNotEmpty'	=> $ruleDirective[Tx_Palm_Merger_RuleInterface::ON_BOTH_PROPERTY_NOT_EMPTY],
+			'onExternalObjectEmpty'		=> $ruleDirective[Tx_Palm_Merger_RuleInterface::ON_EXTERNAL_OBJECT_EMPTY],
+			'onInternalObjectEmpty'		=> $ruleDirective[Tx_Palm_Merger_RuleInterface::ON_INTERNAL_OBJECT_EMPTY],
+			'onBothObjectNotEmpty'		=> $ruleDirective[Tx_Palm_Merger_RuleInterface::ON_BOTH_OBJECT_NOT_EMPTY],
+			'onExternalCollectionEmpty'	=> $ruleDirective[Tx_Palm_Merger_RuleInterface::ON_EXTERNAL_COLLECTION_EMPTY],
+			'onInternalCollectionEmpty'	=> $ruleDirective[Tx_Palm_Merger_RuleInterface::ON_INTERNAL_COLLECTION_EMPTY],
+			'onBothCollectionNotEmpty'	=> $ruleDirective[Tx_Palm_Merger_RuleInterface::ON_BOTH_COLLECTION_NOT_EMPTY],
+		);
+		$ruleSet = Tx_Extbase_Utility_Arrays::arrayFilterRecursive($ruleSet);
+		$ruleSet = t3lib_div::array_merge_recursive_overrule($parentRuleSet, $ruleSet);
+		foreach ($ruleSet as $propertyName=>$property) {
+			Tx_Extbase_Reflection_ObjectAccess::setProperty($rule, $propertyName, $property);
 		}
-		if(isset($ruleDirective[Tx_Palm_Merger_RuleInterface::ON_NOT_FOUND_IN_INTERNAL])) {
-			$rule->setOnNotFoundInInternal($ruleDirective[Tx_Palm_Merger_RuleInterface::ON_NOT_FOUND_IN_INTERNAL]);
-			unset($ruleDirective[Tx_Palm_Merger_RuleInterface::ON_NOT_FOUND_IN_INTERNAL]);
-		}
-		if(isset($ruleDirective[Tx_Palm_Merger_RuleInterface::ON_NOT_FOUND_IN_EXTERNAL])) {
-			$rule->setOnNotFoundInExternal($ruleDirective[Tx_Palm_Merger_RuleInterface::ON_NOT_FOUND_IN_EXTERNAL]);
-			unset($ruleDirective[Tx_Palm_Merger_RuleInterface::ON_NOT_FOUND_IN_EXTERNAL]);
-		}
-		if(isset($ruleDirective[Tx_Palm_Merger_RuleInterface::ON_MATCH])) {
-			$rule->setOnMatch($ruleDirective[Tx_Palm_Merger_RuleInterface::ON_MATCH]);
-			unset($ruleDirective[Tx_Palm_Merger_RuleInterface::ON_MATCH]);
-		}
-		if(!empty($ruleDirective)) {
-			foreach ($ruleDirective as $directive) {
-				if (is_array($directive) && !empty($directive)) {
-					$nestedRule = $this->buildRule($directive);
-					$rule->addNestedRule($nestedRule);
-				}
+		foreach ($ruleDirective as $key=>$directive) {
+			if (is_array($directive)) {
+				$nestedRule = $this->buildRule($key, $directive, $ruleSet);
+				$rule->addNestedRule($nestedRule);
 			}
 		}
+		$rule->setWorkOn($workOn);
 		return $rule;
 	}
 
