@@ -11,6 +11,5 @@ if (TYPO3_MODE === 'BE'){
 				'labels'	=> 'LLL:EXT:' . $_EXTKEY . '/Resources/Private/Language/locallang_mod.xml',
 		)
 	);
-		$container = Tx_Extbase_Object_Container_Container::getContainer();
 }
 ?>

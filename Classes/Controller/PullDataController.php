@@ -108,6 +108,74 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 		$this->redirectToURI(t3lib_div::sanitizeLocalUrl(t3lib_div::getIndpEnv('HTTP_REFERER')));
 	}
 
+
+	/**
+	 * Initialize method for test record action
+	 */
+	public function initializeTestRecordAction() {
+		$edit = t3lib_div::_GPmerged('edit');
+		if(count($edit) == 1) {
+			$tableName = key($edit);
+			$recordIdentifier = key(current($edit));
+			$configuration = $this->configurationManager->getConfiguration(Tx_Extbase_Configuration_ConfigurationManagerInterface::CONFIGURATION_TYPE_FRAMEWORK);
+			$classMapping = $configuration['persistence']['classes'];
+			if ($classMapping && !empty($classMapping)) {
+				$potentialEntities = array();
+				foreach ($classMapping as $entityName=>$classMap) {
+					if(Tx_Extbase_Reflection_ObjectAccess::getPropertyPath($classMap, 'mapping.tableName') == $tableName) {
+						$potentialEntities[$entityName] = $classMap['subclasses'];
+					}
+				}
+			}
+			if(isset($potentialEntities) && !empty($potentialEntities)) {
+				foreach($potentialEntities as $entityName => $potentialEntity) {
+					if(is_array($potentialEntity)) {
+						foreach($potentialEntity as $subClass) {
+							unset($potentialEntities[$subClass]);
+						}
+					}
+				}
+				$entity = current(array_keys($potentialEntities));
+			}
+			if(!isset($entity)) {
+				$entity = str_replace(' ', '_', ucwords(str_replace('_', ' ', $tableName)));
+			}
+			if($entity && $recordIdentifier) {
+				$this->request->setArgument('entityName', $entity);
+				$this->request->setArgument('recordIdentifier', $recordIdentifier);
+			}
+		}
+	}
+
+
+	/**
+	 * Enter description here ...
+	 *
+	 * @param string $entityName
+	 * @param int $recordIdentifier
+	 * @return void|string
+	 */
+	public function testRecordAction($entityName = null, $recordIdentifier = null) {
+		if(!$entityName || !$recordIdentifier) return;
+		$rules = $this->mergerService->getPullRulesByEntityName($entityName);
+		$this->uriBuilder->setArguments(array('M' => 'web_PalmTxPalmM1'));
+		foreach($rules as $fileLocation => $rule) {
+			$repository = $this->getRepositoryFromRule($rule);
+			$entity = $repository->findByUid($recordIdentifier);
+			if($this->mergerService->isRuleApplicableOnEntity($rule, $entity)) {
+				$this->flashMessageContainer->add(
+					'The import rule for "' . $fileLocation . '" is applicable to this record. ' .
+					'Click <a href="' .$this->uriBuilder->uriFor('mergeRecord', array('fileLocation'=>$fileLocation, 'record'=>$recordIdentifier)) . '">here</a> to merge this record with the current.',
+					'',
+					t3lib_FlashMessage::INFO
+				);
+			}
+		}
+
+		return '';
+	}
+
+
 	protected function getRepositoryFromRule(Tx_Palm_Merger_AbstractRule $rule) {
 		$possibleRepositoryClassName = str_replace('_Model_', '_Repository_', $rule->getEntityName()) . 'Repository';
 		if (!class_exists($possibleRepositoryClassName)) {
