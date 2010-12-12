@@ -248,6 +248,15 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 
 
 	/**
+	 * Returns the xml value types
+	 * @return array
+	 */
+	public function getXmlValueTypes() {
+		return array_keys($this->xmlValues);
+	}
+
+
+	/**
 	 * Returns the xml element names for a specific property
 	 * @param string $propertyName
 	 * @return array

@@ -48,7 +48,6 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 		$this->propertyMapper = $propertyMapper;
 	}
 
-
 	/**
 	 * Injector Method for validator resolver
 	 * @param Tx_Extbase_Validation_ValidatorResolver $validatorResolver
@@ -57,6 +56,14 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 		$this->validatorResolver = $validatorResolver;
 	}
 
+	/**
+	 * Returns the property mapper
+	 *
+	 * @return Tx_Extbase_Property_Mapper
+	 */
+	public function getPropertyMapper() {
+		return $this->propertyMapper;
+	}
 	/**
 	 * @param Object $obj
 	 * @return DOMDocument
@@ -185,7 +192,9 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 		$source = $this->mapXmlToArray($doc->documentElement, $className);
 		$target = $this->objectManager->create($className);
 		$validator = $this->validatorResolver->createValidator('GenericObject');
+
 		$this->propertyMapper->mapAndValidate(array_keys($source), $source, $target, array(), $validator);
+
 		return $target;
 	}
 
@@ -236,11 +245,18 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 						}
 					}
 					break;
-//				case $potentialProperty instanceof DOMText:
-//					$potentialPropertyText = trim($property->wholeText);
-//					if(!empty($potentialPropertyText)) {
-//					}
-//					break;
+				case $potentialProperty instanceof DOMText:
+					// TODO: This handling doesn't machtch the handling of serializer
+					$potentialPropertyText = trim($potentialProperty->wholeText);
+					$xmlValueTypes =$classSchema->getXmlValueTypes();
+					if(!empty($potentialPropertyText) && empty($xmlValueTypes)) {
+						// Potentially someone wants to give an existing id
+						return $potentialPropertyText;
+					}
+					break;
+				default:
+					continue 2;
+					break;
 			}
 			if($propertyName && $propertyType) {
 				$propertyMetaData = $classSchema->getProperty($propertyName);
