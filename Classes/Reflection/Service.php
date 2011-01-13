@@ -91,6 +91,12 @@ class Tx_Palm_Reflection_Service extends Tx_Extbase_Reflection_Service {
 			}
 		}
 		$this->classDescriptions[$className] = implode(' ', $description);
+			
+		foreach ($class->getInterfaces() as $interface) {
+			if (!$class->isAbstract()) {
+				$this->interfaceImplementations[$interface->getName()][] = $className;
+			}
+		}
 
 		foreach ($class->getTagsValues() as $tag => $values) {
 			if (array_search($tag, $this->ignoredTags) === FALSE) {
@@ -207,6 +213,7 @@ class Tx_Palm_Reflection_Service extends Tx_Extbase_Reflection_Service {
 			'classPropertyDocComments',
 			'classPropertyNames',
 			'classTagsValues',
+			'interfaceImplementations',
 			'methodTagsValues',
 			'methodParameters',
 			'propertyTagsValues',
