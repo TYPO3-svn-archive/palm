@@ -64,22 +64,22 @@ class Tx_Palm_Merger_RootRule extends Tx_Palm_Merger_AbstractRule {
 	}
 
 	/**
-	 * Sets singePathInCollection
+	 * Sets singlePathInCollection
 	 *
-	 * @param string $singePathInCollection
+	 * @param string $singlePathInCollection
 	 * @return void
 	 */
-	public function setSinglePathInCollection($singePathInCollection) {
-		$this->singePathInCollection = $singePathInCollection;
+	public function setSinglePathInCollection($singlePathInCollection) {
+		$this->singlePathInCollection = $singlePathInCollection;
 	}
 
 	/**
-	 * Returns singePathInCollection
+	 * Returns singlePathInCollection
 	 *
 	 * @return string
 	 */
 	public function getSinglePathInCollection() {
-		return $this->singePathInCollection;
+		return $this->singlePathInCollection;
 	}
 
 }

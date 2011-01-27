@@ -94,7 +94,7 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 	 * @param int $record
 	 */
 	public function mergeRecordAction($fileLocation, $record) {
-		$container = Tx_Extbase_Object_Container_Container::getContainer();
+		$container = t3lib_div::makeInstance('Tx_Extbase_Object_Container_Container');
 		$container->registerImplementation('Tx_Extbase_Persistence_Typo3QuerySettings', 'Tx_Palm_Persistence_MergerQuerySettings');
 		$this->objectManager->get('Tx_Palm_Persistence_Mapper_DataMapper')->setEnableLazyLoading(false);
 		$rule = $this->mergerService->getPullRuleByFileLocation($fileLocation);
