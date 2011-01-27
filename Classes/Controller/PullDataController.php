@@ -79,7 +79,6 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 	public function selectRecordAction($fileLocation, $currentPage = 1) {
 		$rule = $this->mergerService->getPullRuleByFileLocation($fileLocation);
 		$repository = $this->getRepositoryFromRule($rule);
-
 		$this->view->assign('entityName', $rule->getEntityName());
 		$this->view->assign('rule', $rule);
 		$this->view->assign('propertyPath', $this->mergerService->getPropertyPathFromRule($rule));
@@ -102,6 +101,9 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 
 		$entity = $repository->findByUid($record);
 		$this->mergerService->mergeByRule($entity, $rule);
+		$repository->update($entity);
+		
+		$this->objectManager->get('Tx_Extbase_Persistence_Manager')->persistAll();
 
 		$this->flashMessageContainer->add('The record has been successfully merged!', t3lib_FlashMessage::OK);
 
@@ -131,17 +133,16 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 				foreach($potentialEntities as $entityName => $potentialEntity) {
 					if(is_array($potentialEntity)) {
 						foreach($potentialEntity as $subClass) {
-							unset($potentialEntities[$subClass]);
+							$potentialEntities[$subClass] = null;
 						}
 					}
 				}
-				$entity = current(array_keys($potentialEntities));
 			}
 			if(!isset($entity)) {
 				$entity = str_replace(' ', '_', ucwords(str_replace('_', ' ', $tableName)));
 			}
 			if($entity && $recordIdentifier) {
-				$this->request->setArgument('entityName', $entity);
+				$this->request->setArgument('entityNames', array_keys($potentialEntities));
 				$this->request->setArgument('recordIdentifier', $recordIdentifier);
 			}
 		}
@@ -151,37 +152,37 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 	/**
 	 * Enter description here ...
 	 *
-	 * @param string $entityName
+	 * @param array $entityNames
 	 * @param int $recordIdentifier
 	 * @return void|string
 	 */
-	public function testRecordAction($entityName = null, $recordIdentifier = null) {
-		if(!$entityName || !$recordIdentifier) return;
-		$rules = $this->mergerService->getPullRulesByEntityName($entityName);
-		$this->uriBuilder->setArguments(array('M' => 'web_PalmTxPalmM1'));
-		foreach($rules as $fileLocation => $rule) {
-			$repository = $this->getRepositoryFromRule($rule);
-			$entity = $repository->findByUid($recordIdentifier);
-			if($this->mergerService->isRuleApplicableOnEntity($rule, $entity)) {
-				$this->flashMessageContainer->add(
-					'The import rule for "' . $fileLocation . '" is applicable to this record. ' .
-					'Click <a href="' .$this->uriBuilder->uriFor('mergeRecord', array('fileLocation'=>$fileLocation, 'record'=>$recordIdentifier)) . '">here</a> to merge this record with the current.',
-					'',
-					t3lib_FlashMessage::INFO
-				);
+	public function testRecordAction($entityNames = array(), $recordIdentifier = null) {
+		if(empty($entityNames) || !$recordIdentifier) return '';
+		foreach ($entityNames as $entityName) {
+			$rules = $this->mergerService->getPullRulesByEntityName($entityName);
+			$this->uriBuilder->setArguments(array('M' => 'web_PalmTxPalmM1'));
+			foreach($rules as $fileLocation => $rule) {
+				$repository = $this->getRepositoryFromRule($rule);
+				$entity = $repository->findByUid($recordIdentifier);
+				if($this->mergerService->isRuleApplicableOnEntity($rule, $entity)) {
+					$this->flashMessageContainer->add(
+						'The import rule for "' . $fileLocation . '" is applicable to this record. ' .
+						'Click <a href="' .$this->uriBuilder->uriFor('mergeRecord', array('fileLocation'=>$fileLocation, 'record'=>$recordIdentifier)) . '">here</a> to merge this record with the current.',
+						'',
+						t3lib_FlashMessage::INFO
+					);
+				}
 			}
 		}
-
 		return '';
 	}
 
 
 	protected function getRepositoryFromRule(Tx_Palm_Merger_AbstractRule $rule) {
-		$possibleRepositoryClassName = str_replace('_Model_', '_Repository_', $rule->getEntityName()) . 'Repository';
-		if (!class_exists($possibleRepositoryClassName)) {
+		if (!class_exists($rule->getRepositoryName())) {
 			die('PullDataController: This should not happen. The check occurs alreade in rule builder');
 		}
-		return $this->objectManager->get($possibleRepositoryClassName);
+		return $this->objectManager->get($rule->getRepositoryName());
 	}
 
 	protected function getCurrentPid() {

@@ -32,16 +32,25 @@ class Tx_Palm_Merger_RuleBuilder implements t3lib_Singleton {
 		$fileLocation = $ruleConfiguration[Tx_Palm_Merger_ServiceInterface::FILE_LOCATION];
 		$entityName = $ruleConfiguration[Tx_Palm_Merger_ServiceInterface::ENTITY_NAME];
 		$singlePathInCollection = $ruleConfiguration[Tx_Palm_Merger_ServiceInterface::SINGLE_PATH_IN_COLLECTION];
+		
+		$classHierarchy = array_values(class_parents($entityName, true));
+		array_unshift($classHierarchy, $entityName);
 
-		$possibleRepositoryClassName = str_replace('_Model_', '_Repository_', $entityName) . 'Repository';
-		if (!class_exists($possibleRepositoryClassName)) {
-			return null;
+		for ($i = 0; $i < count($classHierarchy); $i++) {
+			$possibleRepositoryClassName = str_replace('_Model_', '_Repository_', $classHierarchy[$i], $replacementCount) . 'Repository';
+			if ($replacementCount > 0 && class_exists($possibleRepositoryClassName)) {
+				$repositoryName = $possibleRepositoryClassName;
+				break;
+			} elseif ($replacementCount == 0) {
+				return null;
+			}
 		}
 
 		foreach ($ruleConfiguration as $workOn=>$directive) {
 			if (is_array($directive) && !empty($directive)) {
 				$rule = $this->buildRule($workOn, $directive);
 				$rule->setEntityName($entityName);
+				$rule->setRepositoryName($repositoryName);
 				$rule->setFileLocation($fileLocation);
 				$rule->setSinglePathInCollection($singlePathInCollection);
 				return $rule;

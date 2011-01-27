@@ -18,6 +18,13 @@ class Tx_Palm_Merger_RootRule extends Tx_Palm_Merger_AbstractRule {
 	 * @var string
 	 */
 	protected $entityName;
+	
+	/**
+	 * Contains repositoryName
+	 * 
+	 * @var string
+	 */
+	protected $repositoryName;
 
 	/**
 	 * Contains the single path of an element when in a list of xml objects
@@ -61,6 +68,24 @@ class Tx_Palm_Merger_RootRule extends Tx_Palm_Merger_AbstractRule {
 	 */
 	public function getEntityName() {
 		return $this->entityName;
+	}
+	
+	/**
+	 * Sets $repositoryName
+	 *
+	 * @param string $repositoryName
+	 */
+	public function setRepositoryName($repositoryName) {
+		$this->repositoryName = $repositoryName;
+	}
+	
+	/**
+	 * Returns $repositoryName
+	 *
+	 * @return string
+	 */
+	public function getRepositoryName() {
+		return $this->repositoryName;
 	}
 
 	/**

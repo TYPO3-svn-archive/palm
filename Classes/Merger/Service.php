@@ -285,7 +285,7 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 
 		$classSchema = $this->reflectionService->getClassSchema($internalEntity);
 		$properties = $classSchema->getProperties();
-		$propertyNames = array_keys($properties);
+		$propertyNames = array_intersect(Tx_Extbase_Reflection_ObjectAccess::getGettablePropertyNames($internalEntity), array_keys($properties));
 
 		foreach ($propertyNames as $propertyName) {
 			if(in_array($propertyName, array('uid','pid','_localizedUid', '_languageUid', '_cleanProperties', '_isClone'))) {
