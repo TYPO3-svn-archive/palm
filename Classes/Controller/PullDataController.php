@@ -79,6 +79,10 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 	public function selectRecordAction($fileLocation, $currentPage = 1) {
 		$rule = $this->mergerService->getPullRuleByFileLocation($fileLocation);
 		$repository = $this->getRepositoryFromRule($rule);
+		$repository->setDefaultOrderings(Array(
+			'uid' => Tx_Extbase_Persistence_QueryInterface::ORDER_ASCENDING,
+		));
+		
 		$this->view->assign('entityName', $rule->getEntityName());
 		$this->view->assign('rule', $rule);
 		$this->view->assign('propertyPath', $this->mergerService->getPropertyPathFromRule($rule));
