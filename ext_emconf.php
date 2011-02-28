@@ -17,7 +17,7 @@ $EM_CONF[$_EXTKEY] = array(
 	'author' => 'Thomas Maroschik',
 	'author_email' => 'tmaroschik@dfau.de',
 	'shy' => '',
-	'dependencies' => '',
+	'dependencies' => 'extbase',
 	'conflicts' => '',
 	'priority' => '',
 	'module' => '',
@@ -32,12 +32,7 @@ $EM_CONF[$_EXTKEY] = array(
 	'version' => '0.0.0',
 	'constraints' => array(
 		'depends' => array(
-			'dam'	=> '',
 			'extbase' => '',
-			'fluid' => '',
-			'partner'	=> '',
-			'partnermvcfe'	=> ''
-
 		),
 		'conflicts' => array(
 		),

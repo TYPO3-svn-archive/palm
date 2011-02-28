@@ -12,4 +12,17 @@ if (TYPO3_MODE === 'BE'){
 		)
 	);
 }
+
+t3lib_extMgm::addTypoScript($extensionName, 'setup', '
+config.tx_extbase {
+	objects {
+		Tx_Extbase_Reflection_Service {
+			className = Tx_Palm_Reflection_Service
+		}
+		Tx_Extbase_Persistence_Mapper_DataMapper {
+			className = Tx_Palm_Persistence_Mapper_DataMapper
+		}
+	}
+}
+');
 ?>

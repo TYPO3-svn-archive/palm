@@ -309,7 +309,7 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 		$propertyMetaData = $classSchema->getProperty($propertyName);
 		if (in_array($propertyMetaData['type'], array('array', 'ArrayObject', 'SplObjectStorage', 'Tx_Extbase_Persistence_ObjectStorage'))) {
 			return self::GETTER_SCOPE_COLLECTION;
-		} elseif(strpos($propertyMetaData['type'], '_') !== false/* && is_subclass_of($propertyMetaData['type'], 'Tx_Extbase_DomainObject_DomainObjectInterface')*/) {
+		} elseif(strpos($propertyMetaData['type'], '_') !== false && !$propertyMetaData['type'] instanceof DateTime) {
 			return self::GETTER_SCOPE_OBJECT;
 		} else {
 			return self::GETTER_SCOPE_PROPERTY;
@@ -344,7 +344,6 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 
 
 	protected function executeAction(Tx_Palm_Merger_AbstractRule $specificRule, $propertyName, $scope, $action, $externalEntity, $externalProperty, $internalEntity, $internalProperty) {
-//		var_dump(get_class($internalEntity), $propertyName, $action);
 		switch($action) {
 			case Tx_Palm_Merger_RuleInterface::ACTION_KEEP:
 				// Do nothing
@@ -362,6 +361,7 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 					$matchOns = t3lib_div::trimExplode(',', $specificRule->getMatchOn());
 					if(!empty($matchOns) && !in_array('.', $matchOns)) {
 						$entityReference = array();
+						// Index external entities by matchons
 						foreach($externalProperty as $entity) {
 							$referenceValue = '';
 							foreach($matchOns as $matchOn) {
@@ -378,6 +378,7 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 								$entityReference[$referenceValue] = array('external' => $entity);
 							}
 						}
+						// Join internal entities on matchons
 						foreach($internalProperty as $entity) {
 							$referenceValue = '';
 							foreach($matchOns as $matchOn) {
@@ -398,21 +399,21 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 								}
 							}
 						}
+						// Determine action for each external-internal pair
 						foreach($entityReference as $entityMap) {
 							$entityAction = $this->determineAction($specificRule, self::GETTER_SCOPE_OBJECT, $entityMap['external'], $entityMap['internal']);
-//							var_dump($entityMap, $entityAction);
 							switch ($entityAction) {
 								case Tx_Palm_Merger_RuleInterface::ACTION_KEEP:
 									// Do nothing
 									break;
 								case Tx_Palm_Merger_RuleInterface::ACTION_TAKE_EXTERNAL:
-//									$internalProperty->attach($entityMap['external']);
+									$internalProperty->attach($entityMap['external']);
 									break;
 								case Tx_Palm_Merger_RuleInterface::ACTION_DELETE:
-//									$internalProperty->deteach($entityMap['internal']);
+									$internalProperty->detach($entityMap['internal']);
 									break;
 								case Tx_Palm_Merger_RuleInterface::ACTION_MATCH_INDIVIDUAL:
-//									$this->mergeEntitiesByRule($entityMap['external'], $entityMap['internal'], $specificRule);
+									$this->mergeEntitiesByRule($entityMap['external'], $entityMap['internal'], $specificRule);
 									break;
 							}
 						}
