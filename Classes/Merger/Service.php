@@ -352,7 +352,12 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 				Tx_Extbase_Reflection_ObjectAccess::setProperty($internalEntity, $propertyName, $externalProperty);
 				break;
 			case Tx_Palm_Merger_RuleInterface::ACTION_DELETE:
-				Tx_Extbase_Reflection_ObjectAccess::setProperty($internalEntity, $propertyName, null);
+				if ($scope === self::GETTER_SCOPE_COLLECTION) {
+					$storage = Tx_Extbase_Reflection_ObjectAccess::getProperty($internalEntity, $propertyName);
+					$storage->removeAll(clone $storage);
+				} else {
+					Tx_Extbase_Reflection_ObjectAccess::setProperty($internalEntity, $propertyName, null);
+				}
 				break;
 			case Tx_Palm_Merger_RuleInterface::ACTION_MATCH_INDIVIDUAL:
 				if($scope === self::GETTER_SCOPE_OBJECT) {
