@@ -268,6 +268,10 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 		$externalEntity = $this->xmlSerializer->unserialize($doc, $rule->getEntityName());
 
 		$this->mergeEntitiesByRule($externalEntity, $entity, $rule);
+// foreach ($entity->getDepartures() as $departure) {
+//	var_dump($departure->getPeriodTitle(), $departure->getHasAvailabilityInd());
+//}
+//die();
 	}
 
 
@@ -301,6 +305,10 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 			if($action === null) continue;
 
 			$this->executeAction($specificRule, $propertyName, $scope, $action, $externalEntity, $externalProperty, $internalEntity, $internalProperty);
+// if ($propertyName == 'hasAvailabilityInd') {
+//        var_dump($propertyName, $externalProperty, $internalProperty, $action, Tx_Extbase_Reflection_ObjectAccess::getProperty($internalEntity, $propertyName));
+//}
+
 		}
 	}
 
@@ -322,8 +330,8 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 			$existence  = ($externalProperty instanceof Tx_Extbase_Persistence_ObjectStorage && $externalProperty->count() > 0) ? 1 : 0;
 			$existence .= ($internalProperty instanceof Tx_Extbase_Persistence_ObjectStorage && $internalProperty->count() > 0) ? 1 : 0;
 		} else {
-			$existence  = ($externalProperty) ? 1 : 0;
-			$existence .= ($internalProperty) ? 1 : 0;
+			$existence  = ($externalProperty !== null) ? 1 : 0;
+			$existence .= ($internalProperty !== null) ? 1 : 0;
 		}
 		switch($existence) {
 			case '00':
