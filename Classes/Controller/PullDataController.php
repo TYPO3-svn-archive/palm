@@ -109,7 +109,7 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 		
 		$this->objectManager->get('Tx_Extbase_Persistence_Manager')->persistAll();
 
-		$this->flashMessageContainer->add('The record has been successfully merged!', t3lib_FlashMessage::OK);
+		$this->flashMessageContainer->add('The record with the uid ' . $record . ' has been successfully merged!', t3lib_FlashMessage::OK);
 
 		$this->redirectToURI(t3lib_div::sanitizeLocalUrl(t3lib_div::getIndpEnv('HTTP_REFERER')));
 	}
