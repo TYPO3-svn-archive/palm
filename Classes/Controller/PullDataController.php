@@ -82,7 +82,7 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 		$repository->setDefaultOrderings(Array(
 			'uid' => Tx_Extbase_Persistence_QueryInterface::ORDER_ASCENDING,
 		));
-		
+
 		$this->view->assign('entityName', $rule->getEntityName());
 		$this->view->assign('rule', $rule);
 		$this->view->assign('propertyPath', $this->mergerService->getPropertyPathFromRule($rule));
@@ -106,10 +106,40 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 		$entity = $repository->findByUid($record);
 		$this->mergerService->mergeByRule($entity, $rule);
 		$repository->update($entity);
-		
+
 		$this->objectManager->get('Tx_Extbase_Persistence_Manager')->persistAll();
 
 		$this->flashMessageContainer->add('The record with the uid ' . $record . ' has been successfully merged!', t3lib_FlashMessage::OK);
+
+		$this->redirectToURI(t3lib_div::sanitizeLocalUrl(t3lib_div::getIndpEnv('HTTP_REFERER')));
+	}
+
+	/**
+	 * Enter description here ...
+	 *
+	 * @param string $fileLocation
+	 */
+	public function mergeAllRecordsAction($fileLocation) {
+		$container = t3lib_div::makeInstance('Tx_Extbase_Object_Container_Container');
+		$container->registerImplementation('Tx_Extbase_Persistence_Typo3QuerySettings', 'Tx_Palm_Persistence_MergerQuerySettings');
+		$this->objectManager->get('Tx_Palm_Persistence_Mapper_DataMapper')->setEnableLazyLoading(false);
+		$rule = $this->mergerService->getPullRuleByFileLocation($fileLocation);
+		$repository = $this->getRepositoryFromRule($rule);
+
+		$updated = 0;
+		foreach($repository->findAll() as $entity) {
+			if ($this->mergerService->isRuleApplicableOnEntity($rule, $entity)) {
+				$this->mergerService->mergeByRule($entity, $rule);
+				$repository->update($entity);
+				$updated++;
+				if ($updated >= 20) {
+					$this->objectManager->get('Tx_Extbase_Persistence_Manager')->persistAll();
+					$updated = 0;
+				}
+			}
+		}
+
+		$this->flashMessageContainer->add('All records have been successfully merged!', t3lib_FlashMessage::OK);
 
 		$this->redirectToURI(t3lib_div::sanitizeLocalUrl(t3lib_div::getIndpEnv('HTTP_REFERER')));
 	}
