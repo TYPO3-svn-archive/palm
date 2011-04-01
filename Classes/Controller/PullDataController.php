@@ -168,7 +168,7 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 			foreach($rules as $fileLocation => $rule) {
 				$repository = $this->getRepositoryFromRule($rule);
 				$entity = $repository->findByUid($recordIdentifier);
-				if($this->mergerService->isRuleApplicableOnEntity($rule, $entity)) {
+				if($entity !== null && $this->mergerService->isRuleApplicableOnEntity($rule, $entity)) {
 					$this->flashMessageContainer->add(
 						'The import rule for "' . $fileLocation . '" is applicable to this record. ' .
 						'Click <a href="' .$this->uriBuilder->uriFor('mergeRecord', array('fileLocation'=>$fileLocation, 'record'=>$recordIdentifier)) . '">here</a> to merge this record with the current.',

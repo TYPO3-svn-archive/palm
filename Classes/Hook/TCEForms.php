@@ -5,6 +5,15 @@ class tx_Palm_Hook_TCEForms {
 		// TODO Check here if a record can get imported
 		if(empty($parent->dynNestedStack)) {
 			$moduleSignature = 'web_PalmTxPalmM1';
+			if (!isset($GLOBALS['TBE_MODULES']['_configuration'][$moduleSignature])) {
+				return;
+			}
+			$moduleConfiguration = $GLOBALS['TBE_MODULES']['_configuration'][$moduleSignature];
+			try {
+				$GLOBALS['BE_USER']->modAccess($moduleConfiguration, TRUE);
+			} catch (RuntimeException $error) {
+				return;
+			}
 			$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['extbase']['extensions']['Palm']['modules'][$moduleSignature]['controllers'] = array(
 				'PullData' => array(
 					'actions' => array(
