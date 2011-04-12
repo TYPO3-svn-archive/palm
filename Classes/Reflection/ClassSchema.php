@@ -34,6 +34,11 @@
 class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 
 	/**
+	 * @var bool
+	 */
+	protected $ignoreUnmappedProperties = false;
+
+	/**
 	 * Value of the Xml Root Name
 	 *
 	 * @var array
@@ -67,6 +72,13 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	 * @var array
 	 */
 	protected $xmlValues = Array();
+
+	/**
+	 * Raw Values of the Xml Element
+	 *
+	 * @var array
+	 */
+	protected $xmlRawValues = Array();
 
 	/**
 	 * Adds (defines) a specific property and its type.
@@ -173,6 +185,44 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 		);
 	}
 
+	/**
+	 * Adds (defines) a xml raw value and its type.
+	 *
+	 * @param string $type Type of the xml element
+	 * @param string $propertyName name of the class property
+	 * @param string $description Description of the class property
+	 * @return void
+	 */
+	public function addXmlRawValue($valueType, $propertyName, $description=null) {
+		if(!empty($this->xmlRawValues) && isset($this->xmlRawValues[$valueType])) {
+			$definedElement = $this->xmlRawValues[$valueType];
+			throw new Tx_Palm_Reflection_Exception_DuplicateXmlRawValueType('The xml raw value type "' . $valueType .'" defined at ' . $this->className . '::' . $propertyName . ' is already defined at ' . $this->className . '::' . $definedElement['propertyName'], 1302538814);
+		}
+		$valueType = Tx_Extbase_Utility_TypeHandling::normalizeType($valueType);
+		$this->xmlRawValues[$valueType] = array(
+			'propertyName'	=> $propertyName,
+			'description'	=> $description,
+		);
+	}
+
+	/**
+	 * Sets $ignoreUnmappedProperties
+	 *
+	 * @param bool $ignoreUnmappedProperties
+	 */
+	public function setIgnoreUnmappedProperties($ignoreUnmappedProperties) {
+		$this->ignoreUnmappedProperties = (bool) $ignoreUnmappedProperties;
+	}
+
+	/**
+	 * Returns $ignoreUnmappedProperties
+	 *
+	 * @return bool
+	 */
+	public function getIgnoreUnmappedProperties() {
+		return $this->ignoreUnmappedProperties;
+	}
+
 
 	/**
 	 * Sets xmlRootName
@@ -255,6 +305,14 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 		return array_keys($this->xmlValues);
 	}
 
+	/**
+	 * Returns the xml raw value types
+	 * @return array
+	 */
+	public function getXmlRawValueTypes() {
+		return array_keys($this->xmlRawValues);
+	}
+
 
 	/**
 	 * Returns the xml element names for a specific property
@@ -309,6 +367,31 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 		return $xmlValues;
 	}
 
+	/**
+	 * Returns the xml raw values for a specific property
+	 * @param string $propertyName
+	 * @return array
+	 */
+	public function getXmlRawValuesForProperty($propertyName) {
+		$xmlRawValues = Array();
+		if(isset($this->properties[$propertyName]['xml'])) {
+			foreach($this->properties[$propertyName]['xml'] as $valueType=>$binding) {
+				if(isset($this->properties[$propertyName]['xml'][$valueType]['isRawValue'])) {
+					$xmlRawValues[] = $valueType;
+				}
+			}
+		}
+		return $xmlRawValues;
+	}
+
+	/**
+	 * Returns the xml wrapper for a specific property
+	 * @param string $propertyName
+	 * @return string
+	 */
+	public function getXmlWrapperForProperty($propertyName) {
+		return (isset($this->properties[$propertyName]['xml']['wrapperName'])) ? $this->properties[$propertyName]['xml']['wrapperName'] : null;
+	}
 
 	/**
 	 * Returns the xml element name for a specific property with specific value type
@@ -317,9 +400,18 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	 * @return null|string
 	 */
 	public function getXmlElementNameForProperty($propertyName, $valueType) {
-		if(!$this->isXmlElementForProperty($propertyName, $valueType))
-			return null;
-		return $this->properties[$propertyName]['xml'][$valueType]['elementName'];
+		if($this->isXmlElementForProperty($propertyName, $valueType)) {
+			return $this->properties[$propertyName]['xml'][$valueType]['elementName'];
+		} else {
+			if (class_exists($valueType)) {
+				// look for descendant classes
+				foreach ($this->properties[$propertyName]['xml'] as $potentialValueType=>$config) {
+					if (is_subclass_of($valueType, $potentialValueType) && $this->isXmlElementForProperty($propertyName, $potentialValueType)) {
+						return $this->properties[$propertyName]['xml'][$potentialValueType]['elementName'];
+					}
+				}
+			}
+		}
 	}
 
 
@@ -330,9 +422,18 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	 * @return null|string
 	 */
 	public function getXmlAttributeNameForProperty($propertyName, $valueType) {
-		if(!$this->isXmlAttributeForProperty($propertyName, $valueType))
-			return null;
-		return $this->properties[$propertyName]['xml'][$valueType]['attributeName'];
+		if($this->isXmlAttributeForProperty($propertyName, $valueType)) {
+			return $this->properties[$propertyName]['xml'][$valueType]['attributeName'];
+		} else {
+			if (class_exists($valueType)) {
+				// look for descendant classes
+				foreach ($this->properties[$propertyName]['xml'] as $potentialValueType=>$config) {
+					if (is_subclass_of($valueType, $potentialValueType) && $this->isXmlAttributeForProperty($propertyName, $potentialValueType)) {
+						$this->properties[$propertyName]['xml'][$valueType]['attributeName'];
+					}
+				}
+			}
+		}
 	}
 
 
@@ -383,6 +484,17 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 		return $this->xmlValues[$valueType]['propertyName'];
 	}
 
+
+	/**
+	 * Returns the property name for a specific value type
+	 * @param string $valueType
+	 * @return null|string
+	 */
+	public function getPropertyNameForXmlRawValueType($valueType) {
+		if(!$this->isPropertyForXmlRawValue($valueName))
+			return null;
+		return $this->xmlRawValues[$valueType]['propertyName'];
+	}
 
 	/**
 	 * Returns the property type for a specific xml element
@@ -492,6 +604,17 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 		return isset($this->properties[$propertyName]['xml'][$valueType]['isValue']);
 	}
 
+	/**
+	 * Returns whether the given property has an xml raw value binding for the specific value type
+	 * @param string $propertyName
+	 * @param string $valueType
+	 * @return boolean
+	 */
+	public function isXmlRawValueForProperty($propertyName, $valueType) {
+		if(!$this->isXmlNameForPropertyWithValueType($propertyName, $valueType))
+			return false;
+		return isset($this->properties[$propertyName]['xml'][$valueType]['isRawValue']);
+	}
 
 	/**
 	 * Returns whether a specific xml element wrapper has a property binding

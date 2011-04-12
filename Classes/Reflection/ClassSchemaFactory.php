@@ -30,12 +30,30 @@
  */
 class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 
+	/**
+	 * @var array
+	 */
+	protected $configuration;
+
+	/**
+	 * @var Tx_Extbase_Configuration_ConfigurationManager
+	 */
+	protected $configurationManager;
 
 	/**
 	 * @var Tx_Extbase_Reflection_Service
 	 */
 	private $reflectionService;
 
+	/**
+	 * @param Tx_Palm_Configuration_ConfigurationManager $configurationManager
+	 * @return void
+	 */
+	public function injectConfigurationManager(Tx_Palm_Configuration_ConfigurationManager $configurationManager) {
+		$this->configurationManager = $configurationManager;
+		$config = $this->configurationManager->getConfiguration(Tx_Palm_Configuration_ConfigurationManager::CONFIGURATION_TYPE_FRAMEWORK);
+		$this->configuration = $config['mapping']['xml'];
+	}
 
 	/**
 	 * Injector Method for reflection service
@@ -44,7 +62,6 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 	public function injectReflectionService(Tx_Extbase_Reflection_Service $reflectionService) {
 		$this->reflectionService = $reflectionService;
 	}
-
 
 	/**
 	 * Builds class schemata from classes
@@ -71,31 +88,120 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 			return NULL;
 		}
 
-		if($this->reflectionService->isClassTaggedWith($className, 'xml')) {
-			$xmlTagValues	= $this->reflectionService->getClassTagValues($className, 'xml');
+
+		$mappingInformation = $this->buildMappingInformation($className);
+		if (isset($this->configuration['classes'][$className]) && is_array($this->configuration['classes'][$className])) {
+			$mappingInformation = t3lib_div::array_merge_recursive_overrule($mappingInformation, $this->configuration['classes'][$className]);
+		}
+
+		$classParents = class_parents($className);
+			$overriddenProperties = array();
+		foreach ($classParents as $classParent) {
+			if (isset($this->configuration['classes'][$classParent]['properties']) && is_array($this->configuration['classes'][$classParent]['properties'])) {
+				foreach ($this->configuration['classes'][$classParent]['properties'] as $propertyName=>$propertyConfiguration) {
+					if (!isset($overriddenProperties[$propertyName]) && isset($propertyConfiguration['removeMappingFor'])) {
+						$overriddenProperties[$propertyName] = true;
+						$mappingInformation['properties'][$propertyName]['removeMappingFor'] = $propertyConfiguration['removeMappingFor'];
+						break;
+					}
+				}
+			}
+		}
+
+		if (isset($mappingInformation['rootName'])) {
+			$classSchema->setXmlRoot($mappingInformation['rootName'], (isset($mappingInformation['rootDescription'])) ? isset($mappingInformation['rootDescription']) : '');
+		}
+
+		if (isset($mappingInformation['ignoreUnmappedProperties'])) {
+			$classSchema->setIgnoreUnmappedProperties($mappingInformation['ignoreUnmappedProperties']);
+		} elseif (isset($this->configuration['ignoreUnmappedProperties'])) {
+			$classSchema->setIgnoreUnmappedProperties($this->configuration['ignoreUnmappedProperties']);
+		}
+
+		foreach ($this->reflectionService->getClassPropertyNames($className) as $propertyName) {
+			if (isset($mappingInformation['properties'][$propertyName])) {
+				$propertyConfiguration = $mappingInformation['properties'][$propertyName];
+				foreach ($propertyConfiguration as $valueType=>$mappingConfiguration) {
+					if (isset($propertyConfiguration['removeMappingFor'])) {
+						if (t3lib_div::inList($propertyConfiguration['removeMappingFor'], $valueType)) {
+							unset($propertyConfiguration[$valueType]);
+							$mappingConfiguration = array();
+						}
+					}
+					switch ($mappingConfiguration) {
+						case array_key_exists('wrapperName', $mappingConfiguration):
+							$classSchema->addXmlElementWrapper($mappingConfiguration['wrapperName'], $propertyName);
+							break;
+						case array_key_exists('elementName', $mappingConfiguration):
+							$classSchema->addXmlElement($mappingConfiguration['elementName'], $valueType, $propertyName, $mappingConfiguration['description']);
+							break;
+						case array_key_exists('attributeName', $mappingConfiguration):
+							$classSchema->addXmlAttribute($mappingConfiguration['attributeName'], $valueType, $propertyName, $mappingConfiguration['description']);
+							break;
+						case array_key_exists('isValue', $mappingConfiguration):
+							$classSchema->addXmlValue($valueType, $propertyName, $mappingConfiguration['description']);
+							break;
+						case array_key_exists('isRawValue', $mappingConfiguration):
+							$classSchema->addXmlRawValue($valueType, $propertyName, $mappingConfiguration['description']);
+							break;
+					}
+				}
+			} else {
+				$propertyConfiguration = array();
+			}
+			if (!$this->reflectionService->isPropertyTaggedWith($className, $propertyName, 'transient') && $this->reflectionService->isPropertyTaggedWith($className, $propertyName, 'var')) {
+				$cascadeTagValues = $this->reflectionService->getPropertyTagValues($className, $propertyName, 'cascade');
+				$classSchema->addProperty(
+					$propertyName,
+					implode(' ', $this->reflectionService->getPropertyTagValues($className, $propertyName, 'var')),
+					$this->reflectionService->isPropertyTaggedWith($className, $propertyName, 'lazy'),
+					$cascadeTagValues[0],
+					$propertyConfiguration);
+			}
+			if ($this->reflectionService->isPropertyTaggedWith($className, $propertyName, 'uuid')) {
+				$classSchema->setUUIDPropertyName($propertyName);
+			}
+			if ($this->reflectionService->isPropertyTaggedWith($className, $propertyName, 'identity')) {
+				$classSchema->markAsIdentityProperty($propertyName);
+			}
+		}
+
+		return $classSchema;
+	}
+
+	/**
+	 * @throws Tx_Palm_Reflection_Exception_DuplicateXmlTypeBinding|Tx_Palm_Reflection_Exception_InvalidXmlNodeType
+	 * @param  $className
+	 * @param  $format
+	 * @return array
+	 */
+	protected function buildMappingInformation($className, $format = 'xml') {
+		$map = array();
+		if($this->reflectionService->isClassTaggedWith($className, $format)) {
+			$xmlTagValues	= $this->reflectionService->getClassTagValues($className, $format);
 			$description	= $this->reflectionService->getClassDescription($className);
 			foreach($xmlTagValues as $xmlTagValue) {
 				list($nodeType, $nodeName) = preg_split('/\s*\(\s*|\s*\)\s*|\s*\,\s*/i', $xmlTagValue, 4, PREG_SPLIT_NO_EMPTY);
 				if(!isset($nodeType) || !in_array($nodeType, array('Root'))) {
-					throw new Tx_Palm_Reflection_Exception_InvalidXmlNodeType('Invalid xml node type "' . $nodeType . '" at ' . $className .  ' . Must be of Root.', 1289413094);
+					throw new Tx_Palm_Reflection_Exception_InvalidXmlNodeType('Invalid ' . $format . ' node type "' . $nodeType . '" at ' . $className .  ' . Must be of Root.', 1289413094);
 				}
-				$classSchema->setXmlRoot($nodeName, $description);
+				$map['rootName'] = $nodeName;
+				$map['rootDescription'] = $description;
 				break;
 			}
 		}
-
 		foreach ($this->reflectionService->getClassPropertyNames($className) as $propertyName) {
-			$propertyXmlConfiguration = Array();
-			if($this->reflectionService->isPropertyTaggedWith($className, $propertyName, 'xml')) {
-				$xmlTagValues	= $this->reflectionService->getPropertyTagValues($className, $propertyName, 'xml');
+			$propertyConfiguration = array();
+			if($this->reflectionService->isPropertyTaggedWith($className, $propertyName, $format)) {
+				$tagValues	= $this->reflectionService->getPropertyTagValues($className, $propertyName, $format);
 				$description	= $this->reflectionService->getPropertyDescription($className, $propertyName);
-				foreach($xmlTagValues as $xmlTagValue) {
-					list($nodeType, $valueType, $nodeName) = preg_split('/\s*\(\s*|\s*\)\s*|\s*\,\s*/i', $xmlTagValue, 4, PREG_SPLIT_NO_EMPTY);
+				foreach($tagValues as $tagValue) {
+					list($nodeType, $valueType, $nodeName) = preg_split('/\s*\(\s*|\s*\)\s*|\s*\,\s*/i', $tagValue, 4, PREG_SPLIT_NO_EMPTY);
 					// Attention! Wrapper has no valueType and Value no Node Name
 					if(!isset($nodeType) || !in_array($nodeType, array('Wrapper','Element', 'Attribute', 'Value'))) {
 						throw new Tx_Palm_Reflection_Exception_InvalidXmlNodeType('Invalid xml node type "' . $nodeType . '" at ' . $className . '::' . $propertyName .  ' . Must be one of Wrapper/Element/Attribute/Value.', 1289409062);
 					}
-					if(isset($propertyXmlConfiguration[$valueType])) {
+					if(isset($propertyConfiguration[$valueType])) {
 						throw new Tx_Palm_Reflection_Exception_DuplicateXmlTypeBinding('The value type "' . $valueType . '" is already bound to ' . $className . '::' . $propertyName , 1289559710);
 					}
 					if(empty($nodeName)) {
@@ -106,49 +212,43 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 							if(!empty($valueType)) {
 								$nodeName = $valueType;
 							}
-							$propertyXmlConfiguration['wrapperName'] = $nodeName;
-							$classSchema->addXmlElementWrapper($nodeName, $propertyName);
+							$propertyConfiguration['wrapperName'] = $nodeName;
+	//						$classSchema->addXmlElementWrapper($nodeName, $propertyName);
 							break;
 						case 'Element':
-							$propertyXmlConfiguration[$valueType] = Array(
-								'elementName'	=> $nodeName
+							$propertyConfiguration[$valueType] = Array(
+								'elementName'	=> $nodeName,
+								'description'	=> $description
 							);
-							$classSchema->addXmlElement($nodeName, $valueType, $propertyName, $description);
+	//						$classSchema->addXmlElement($nodeName, $valueType, $propertyName, $description);
 							break;
 						case 'Attribute':
-							$propertyXmlConfiguration[$valueType] = Array(
-								'attributeName'	=> $nodeName
+							$propertyConfiguration[$valueType] = Array(
+								'attributeName'	=> $nodeName,
+								'description'	=> $description
 							);
-							$classSchema->addXmlAttribute($nodeName, $valueType, $propertyName, $description);
+	//						$classSchema->addXmlAttribute($nodeName, $valueType, $propertyName, $description);
 							break;
 						case 'Value':
-							$propertyXmlConfiguration[$valueType] = Array(
-								'isValue'	=> true
+							$propertyConfiguration[$valueType] = Array(
+								'isValue'	=> true,
+								'description'	=> $description
 							);
-							$classSchema->addXmlValue($valueType, $propertyName, $description);
+	//						$classSchema->addXmlValue($valueType, $propertyName, $description);
+							break;
+						case 'RawValue':
+							$propertyConfiguration[$valueType] = Array(
+								'isRawValue'	=> true,
+								'description'	=> $description
+							);
 							break;
 					}
 				}
 			}
-			if (!$this->reflectionService->isPropertyTaggedWith($className, $propertyName, 'transient') && $this->reflectionService->isPropertyTaggedWith($className, $propertyName, 'var')) {
-				$cascadeTagValues = $this->reflectionService->getPropertyTagValues($className, $propertyName, 'cascade');
-				$xmlTagValues = $this->reflectionService->getPropertyTagValues($className, $propertyName, 'xml');
-				$classSchema->addProperty(
-					$propertyName,
-					implode(' ', $this->reflectionService->getPropertyTagValues($className, $propertyName, 'var')),
-					$this->reflectionService->isPropertyTaggedWith($className, $propertyName, 'lazy'),
-					$cascadeTagValues[0],
-					$propertyXmlConfiguration);
-			}
-			if ($this->reflectionService->isPropertyTaggedWith($className, $propertyName, 'uuid')) {
-				$classSchema->setUUIDPropertyName($propertyName);
-			}
-			if ($this->reflectionService->isPropertyTaggedWith($className, $propertyName, 'identity')) {
-				$classSchema->markAsIdentityProperty($propertyName);
+			if (!empty($propertyConfiguration)) {
+				$map['properties'][$propertyName] = $propertyConfiguration;
 			}
 		}
-
-
-		return $classSchema;
+		return $map;
 	}
 }

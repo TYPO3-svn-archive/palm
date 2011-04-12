@@ -91,7 +91,7 @@ class Tx_Palm_Reflection_Service extends Tx_Extbase_Reflection_Service {
 			}
 		}
 		$this->classDescriptions[$className] = implode(' ', $description);
-			
+
 		foreach ($class->getInterfaces() as $interface) {
 			if (!$class->isAbstract()) {
 				$this->interfaceImplementations[$interface->getName()][] = $className;
@@ -229,4 +229,3 @@ class Tx_Palm_Reflection_Service extends Tx_Extbase_Reflection_Service {
 
 
 }
-?>
