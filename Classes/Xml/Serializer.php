@@ -277,11 +277,11 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	 * @return Object
 	 */
 	public function unserialize(DOMDocument $doc, $className) {
+		$classSchema = $this->reflectionService->getClassSchema($className);
 		$source = $this->mapXmlToArray($doc->documentElement, $className);
 		$target = $this->objectManager->create($className);
 		$validator = $this->validatorResolver->createValidator('GenericObject');
-
-		$this->propertyMapper->mapAndValidate(array_keys($source), $source, $target, array(), $validator);
+		$this->propertyMapper->mapAndValidate(array_keys($source), $source, $target, array_keys($classSchema->getProperties()), $validator);
 
 		return $target;
 	}
@@ -291,7 +291,7 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	 * Maps the given DOMElement to an property mapper conform array
 	 * @param DOMElement $source
 	 * @param unknown_type $class
-	 * @return Ambigous <multitype:, number, boolean, DateTime, void, string>
+	 * @return array
 	 */
 	protected function mapXmlToArray(DOMElement $source, $class) {
 		$classSchema = $this->reflectionService->getClassSchema($class);
