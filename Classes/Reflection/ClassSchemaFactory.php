@@ -121,6 +121,9 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 		foreach ($this->reflectionService->getClassPropertyNames($className) as $propertyName) {
 			if (isset($mappingInformation['properties'][$propertyName])) {
 				$propertyConfiguration = $mappingInformation['properties'][$propertyName];
+				if (isset($propertyConfiguration['wrapperName'])) {
+					$classSchema->addXmlElementWrapper($propertyConfiguration['wrapperName'], $propertyName);
+				}
 				foreach ($propertyConfiguration as $valueType=>$mappingConfiguration) {
 					if (isset($propertyConfiguration['removeMappingFor'])) {
 						if (t3lib_div::inList($propertyConfiguration['removeMappingFor'], $valueType)) {
@@ -129,9 +132,6 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 						}
 					}
 					switch ($mappingConfiguration) {
-						case array_key_exists('wrapperName', $mappingConfiguration):
-							$classSchema->addXmlElementWrapper($mappingConfiguration['wrapperName'], $propertyName);
-							break;
 						case array_key_exists('elementName', $mappingConfiguration):
 							$classSchema->addXmlElement($mappingConfiguration['elementName'], $valueType, $propertyName, $mappingConfiguration['description']);
 							break;

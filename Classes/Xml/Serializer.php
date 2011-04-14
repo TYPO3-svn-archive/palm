@@ -323,7 +323,9 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 						$propertyName = $classSchema->getPropertyNameForXmlElementWrapper($potentialProperty->tagName);
 						$nodeValue = $this->mapXmlToArray($potentialProperty, $class);
 						// Skip the type parsing. Types are already parsed.
-						$bag[$propertyName] = $nodeValue[$propertyName];
+						if ($propertyName !== NULL) {
+							$bag[$propertyName] = $nodeValue[$propertyName];
+						}
 					} else {
 						$propertyType = $classSchema->getPropertyTypeForXmlElement($potentialProperty->tagName);
 						if ($this->isAtomicType($propertyType)) {
@@ -346,7 +348,7 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 					continue 2;
 					break;
 			}
-			if ($propertyName && $propertyType) {
+			if ($propertyName !== NULL && $propertyType) {
 				$propertyMetaData = $classSchema->getProperty($propertyName);
 				if ($propertyType != $propertyMetaData['type']) {
 					// XML Type does not equal Model Type
