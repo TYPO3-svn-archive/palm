@@ -16,7 +16,7 @@
 /**
  *
  */
-class Tx_Palm_ViewHelpers_Merger_IsRuleApplicabaleViewHelper extends Tx_Fluid_Core_ViewHelper_AbstractViewHelper {
+class Tx_Palm_ViewHelpers_Merger_IsEntityAlreadyPresentViewHelper extends Tx_Fluid_Core_ViewHelper_AbstractViewHelper {
 
 
 	/**
@@ -42,7 +42,7 @@ class Tx_Palm_ViewHelpers_Merger_IsRuleApplicabaleViewHelper extends Tx_Fluid_Co
 	 * @return boolean
 	 */
 	public function render(Tx_Palm_Merger_RootRule $rule, Tx_Extbase_DomainObject_AbstractDomainObject $item) {
-		return (bool) $this->mergerService->isRuleApplicableOnEntity($rule, $item);
+		return (bool) $this->mergerService->isEntityAlreadyPresent($rule, $item);
 	}
 }
 

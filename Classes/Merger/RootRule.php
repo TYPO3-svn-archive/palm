@@ -18,10 +18,10 @@ class Tx_Palm_Merger_RootRule extends Tx_Palm_Merger_AbstractRule {
 	 * @var string
 	 */
 	protected $entityName;
-	
+
 	/**
 	 * Contains repositoryName
-	 * 
+	 *
 	 * @var string
 	 */
 	protected $repositoryName;
@@ -33,13 +33,20 @@ class Tx_Palm_Merger_RootRule extends Tx_Palm_Merger_AbstractRule {
 	protected $singlePathInCollection;
 
 	/**
+	 * Contains the single distinct path of an element when in a list of xml objects
+	 * @var string
+	 */
+	protected $singleEntityInCollection;
+
+	/**
 	 * Sets fileLocation
 	 *
 	 * @param string $fileLocation
-	 * @return void
+	 * @return Tx_Palm_Merger_RootRule
 	 */
 	public function setFileLocation($fileLocation) {
 		$this->fileLocation = $fileLocation;
+		return $this;
 	}
 
 	/**
@@ -55,10 +62,11 @@ class Tx_Palm_Merger_RootRule extends Tx_Palm_Merger_AbstractRule {
 	 * Sets entityName
 	 *
 	 * @param string $entityName
-	 * @return void
+	 * @return Tx_Palm_Merger_RootRule
 	 */
 	public function setEntityName($entityName) {
 		$this->entityName = $entityName;
+		return $this;
 	}
 
 	/**
@@ -69,16 +77,18 @@ class Tx_Palm_Merger_RootRule extends Tx_Palm_Merger_AbstractRule {
 	public function getEntityName() {
 		return $this->entityName;
 	}
-	
+
 	/**
 	 * Sets $repositoryName
 	 *
 	 * @param string $repositoryName
+	 * @return Tx_Palm_Merger_RootRule
 	 */
 	public function setRepositoryName($repositoryName) {
 		$this->repositoryName = $repositoryName;
+		return $this;
 	}
-	
+
 	/**
 	 * Returns $repositoryName
 	 *
@@ -92,10 +102,11 @@ class Tx_Palm_Merger_RootRule extends Tx_Palm_Merger_AbstractRule {
 	 * Sets singlePathInCollection
 	 *
 	 * @param string $singlePathInCollection
-	 * @return void
+	 * @return Tx_Palm_Merger_RootRule
 	 */
 	public function setSinglePathInCollection($singlePathInCollection) {
 		$this->singlePathInCollection = $singlePathInCollection;
+		return $this;
 	}
 
 	/**
@@ -105,6 +116,26 @@ class Tx_Palm_Merger_RootRule extends Tx_Palm_Merger_AbstractRule {
 	 */
 	public function getSinglePathInCollection() {
 		return $this->singlePathInCollection;
+	}
+
+	/**
+	 * Sets distinctPathInCollection
+	 *
+	 * @param  $distinctPathInCollection
+	 * @return Tx_Palm_Merger_RootRule
+	 */
+	public function setSingleEntityInCollection($distinctPathInCollection) {
+		$this->singleEntityInCollection = $distinctPathInCollection;
+		return $this;
+	}
+
+	/**
+	 * Returns distinctPathInCollection
+	 *
+	 * @return string
+	 */
+	public function getSingleEntityInCollection() {
+		return $this->singleEntityInCollection;
 	}
 
 }

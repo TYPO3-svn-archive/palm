@@ -2,11 +2,8 @@
 /***************************************************************
 *  Copyright notice
 *
-*  (c) 2009 Jochen Rau <jochen.rau@typoplanet.de>
+*  (c) 2009 Christian Müller <christian@kitsunet.de>
 *  All rights reserved
-*
-*  This class is a backport of the corresponding class of FLOW3.
-*  All credits go to the v5 team.
 *
 *  This script is part of the TYPO3 project. The TYPO3 project is
 *  free software; you can redistribute it and/or modify
@@ -26,40 +23,28 @@
 ***************************************************************/
 
 /**
- * Query settings. This class is NOT part of the FLOW3 API.
- * It reflects the settings unique to TYPO3 4.x.
+ * PHP type handling functions
  *
  * @package Extbase
- * @subpackage Persistence
- * @version $Id: Typo3QuerySettings.php 1972 2010-03-08 16:59:20Z jocrau $
+ * @subpackage Utility
+ * @version $ID:$
  * @api
  */
-class Tx_Palm_Persistence_MergerQuerySettings extends Tx_Extbase_Persistence_Typo3QuerySettings {
+class Tx_Palm_Utility_TypeHandling extends Tx_Extbase_Utility_TypeHandling {
 
 	/**
-	 * Flag if the visibility settings for the frontend should be respected.
-	 * @var boolean
+	 * @param mixed $type
+	 * @return boolean
 	 */
-	protected $respectEnableFields = FALSE;
-
-	/**
-	 * @var Tx_Palm_Merger_RootRule
-	 */
-	protected $applicableRule;
-
-	/**
-	 * @return Tx_Palm_Merger_RootRule
-	 */
-	public function getApplicableRule() {
-		return $this->applicableRule;
+	static public function isAtomicType($type) {
+		$type = parent::normalizeType($type);
+		return $type == "string"
+			|| $type == "integer"
+			|| $type == "boolean"
+			|| $type == "float"
+			|| $type == "double"
+			|| $type == "DateTime";
 	}
 
-	/**
-	 * @param  $applicableRule
-	 * @return void
-	 */
-	public function setApplicableRule($applicableRule) {
-		$this->applicableRule = $applicableRule;
-	}
 }
 ?>

@@ -230,6 +230,27 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	}
 
 	/**
+	 * @param array $sourceArray
+	 * @param string $className
+	 * @param string $propertyName
+	 * @param mixed $value
+	 * @param string $format
+	 * @return mixed
+	 */
+	protected function transformForInput($sourceArray, $className, $propertyName, $value, $format = 'xml') {
+		if (isset($this->configuration['transformIn']['xml']['classes'][$className]['properties'][$propertyName])) {
+			$propertyTransformationObject = $this->configuration['transformIn'][$format]['classes'][$className]['properties'][$propertyName]['_typoScriptNodeValue'];
+			$propertyTransformation = Tx_Extbase_Utility_TypoScript::convertPlainArrayToTypoScriptArray($this->configuration['transformIn'][$format]['classes'][$className]['properties'][$propertyName]);
+			// TODO elaborate why this is neccessary
+			$GLOBALS['TSFE']->cObjectDepthCounter = 50;
+			$this->contentObject->start($sourceArray);
+			$this->contentObject->setCurrentVal($value);
+			$value = $this->contentObject->cObjGetSingle($propertyTransformationObject, $propertyTransformation);
+		}
+		return $value;
+	}
+
+	/**
 	 * @param mixed $value
 	 * @return string|string
 	 */
@@ -259,7 +280,8 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 			return $value ? "true" : "false";
 
 		if ($value instanceof DateTime) {
-			$result = $value->format("o-m-d\TH:i:s\Z");
+//			$result = $value->format("o-m-d\TH:i:s\Z");
+			$result = $value->format("c");
 //			$time = $value->format("H:i:s");
 //			if ($time != "00:00:00")
 //				$result .= " $time";
@@ -282,7 +304,6 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 		$target = $this->objectManager->create($className);
 		$validator = $this->validatorResolver->createValidator('GenericObject');
 		$this->propertyMapper->mapAndValidate(array_keys($source), $source, $target, array_keys($classSchema->getProperties()), $validator);
-
 		return $target;
 	}
 
@@ -338,10 +359,14 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 				case $potentialProperty instanceof DOMText:
 					// TODO: This handling doesn't machtch the handling of serializer
 					$potentialPropertyText = trim($potentialProperty->wholeText);
-					$xmlValueTypes =$classSchema->getXmlValueTypes();
+					$xmlValueTypes = $classSchema->getXmlValueTypes();
 					if (!empty($potentialPropertyText) && empty($xmlValueTypes)) {
 						// Potentially someone wants to give an existing id
 						return $potentialPropertyText;
+					} elseif (!empty($potentialPropertyText) && !empty($xmlValueTypes)) {
+						$propertyType = $this->getValueType($potentialPropertyText);
+						$propertyName = $classSchema->getPropertyNameForXmlValueType($propertyType);
+						$nodeValue .= $potentialPropertyText;
 					}
 					break;
 				default:
@@ -366,6 +391,13 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 				}
 			} else {
 				continue;
+			}
+		}
+		$properties = array_keys($classSchema->getProperties());
+		foreach ($properties as $propertyName) {
+			$tempPropertyValue = $this->transformForInput($bag, $class, $propertyName, $bag[$propertyName]);
+			if ($tempPropertyValue !== NULL && $tempPropertyValue !== '') {
+				$bag[$propertyName] = $tempPropertyValue;
 			}
 		}
 		return $bag;

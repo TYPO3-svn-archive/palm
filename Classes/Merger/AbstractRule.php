@@ -75,10 +75,11 @@ abstract class Tx_Palm_Merger_AbstractRule implements Tx_Palm_Merger_RuleInterfa
 	 * Sets matchOn
 	 *
 	 * @param string $matchOn
-	 * @return void
+	 * @return Tx_Palm_Merger_AbstractRule
 	 */
 	public function setMatchOn($matchOn) {
 		$this->matchOn = $matchOn;
+		return $this;
 	}
 
 
@@ -96,10 +97,11 @@ abstract class Tx_Palm_Merger_AbstractRule implements Tx_Palm_Merger_RuleInterfa
 	 * Sets workOn
 	 *
 	 * @param string $workOn
-	 * @return void
+	 * @return Tx_Palm_Merger_AbstractRule
 	 */
 	public function setWorkOn($workOn) {
 		$this->workOn = $workOn;
+		return $this;
 	}
 
 
@@ -117,10 +119,11 @@ abstract class Tx_Palm_Merger_AbstractRule implements Tx_Palm_Merger_RuleInterfa
 	 * Sets onExternalPropertyEmpty
 	 *
 	 * @param int $onExternalPropertyEmpty
-	 * @return void
+	 * @return Tx_Palm_Merger_AbstractRule
 	 */
 	public function setOnExternalPropertyEmpty($onExternalPropertyEmpty) {
 		$this->onExternalPropertyEmpty = $onExternalPropertyEmpty;
+		return $this;
 	}
 
 
@@ -138,10 +141,11 @@ abstract class Tx_Palm_Merger_AbstractRule implements Tx_Palm_Merger_RuleInterfa
 	 * Sets onInternalPropertyEmpty
 	 *
 	 * @param int $onInternalPropertyEmpty
-	 * @return void
+	 * @return Tx_Palm_Merger_AbstractRule
 	 */
 	public function setOnInternalPropertyEmpty($onInternalPropertyEmpty) {
 		$this->onInternalPropertyEmpty = $onInternalPropertyEmpty;
+		return $this;
 	}
 
 
@@ -159,10 +163,11 @@ abstract class Tx_Palm_Merger_AbstractRule implements Tx_Palm_Merger_RuleInterfa
 	 * Sets onBothPropertyNotEmpty
 	 *
 	 * @param int $onBothPropertyNotEmpty
-	 * @return void
+	 * @return Tx_Palm_Merger_AbstractRule
 	 */
 	public function setOnBothPropertyNotEmpty($onBothPropertyNotEmpty) {
 		$this->onBothPropertyNotEmpty = $onBothPropertyNotEmpty;
+		return $this;
 	}
 
 
@@ -180,10 +185,11 @@ abstract class Tx_Palm_Merger_AbstractRule implements Tx_Palm_Merger_RuleInterfa
 	 * Sets onExternalObjectEmpty
 	 *
 	 * @param int $onExternalObjectEmpty
-	 * @return void
+	 * @return Tx_Palm_Merger_AbstractRule
 	 */
 	public function setOnExternalObjectEmpty($onExternalObjectEmpty) {
 		$this->onExternalObjectEmpty = $onExternalObjectEmpty;
+		return $this;
 	}
 
 
@@ -201,10 +207,11 @@ abstract class Tx_Palm_Merger_AbstractRule implements Tx_Palm_Merger_RuleInterfa
 	 * Sets onInternalObjectEmpty
 	 *
 	 * @param int $onInternalObjectEmpty
-	 * @return void
+	 * @return Tx_Palm_Merger_AbstractRule
 	 */
 	public function setOnInternalObjectEmpty($onInternalObjectEmpty) {
 		$this->onInternalObjectEmpty = $onInternalObjectEmpty;
+		return $this;
 	}
 
 
@@ -222,10 +229,11 @@ abstract class Tx_Palm_Merger_AbstractRule implements Tx_Palm_Merger_RuleInterfa
 	 * Sets onBothObjectNotEmpty
 	 *
 	 * @param int $onBothObjectNotEmpty
-	 * @return void
+	 * @return Tx_Palm_Merger_AbstractRule
 	 */
 	public function setOnBothObjectNotEmpty($onBothObjectNotEmpty) {
 		$this->onBothObjectNotEmpty = $onBothObjectNotEmpty;
+		return $this;
 	}
 
 
@@ -243,10 +251,11 @@ abstract class Tx_Palm_Merger_AbstractRule implements Tx_Palm_Merger_RuleInterfa
 	 * Sets onExternalCollectionEmpty
 	 *
 	 * @param int $onExternalCollectionEmpty
-	 * @return void
+	 * @return Tx_Palm_Merger_AbstractRule
 	 */
 	public function setOnExternalCollectionEmpty($onExternalCollectionEmpty) {
 		$this->onExternalCollectionEmpty = $onExternalCollectionEmpty;
+		return $this;
 	}
 
 
@@ -264,10 +273,11 @@ abstract class Tx_Palm_Merger_AbstractRule implements Tx_Palm_Merger_RuleInterfa
 	 * Sets onInternalCollectionEmpty
 	 *
 	 * @param int $onInternalCollectionEmpty
-	 * @return void
+	 * @return Tx_Palm_Merger_AbstractRule
 	 */
 	public function setOnInternalCollectionEmpty($onInternalCollectionEmpty) {
 		$this->onInternalCollectionEmpty = $onInternalCollectionEmpty;
+		return $this;
 	}
 
 
@@ -285,10 +295,11 @@ abstract class Tx_Palm_Merger_AbstractRule implements Tx_Palm_Merger_RuleInterfa
 	 * Sets onBothCollectionNotEmpty
 	 *
 	 * @param int $onBothCollectionNotEmpty
-	 * @return void
+	 * @return Tx_Palm_Merger_AbstractRule
 	 */
 	public function setOnBothCollectionNotEmpty($onBothCollectionNotEmpty) {
 		$this->onBothCollectionNotEmpty = $onBothCollectionNotEmpty;
+		return $this;
 	}
 
 
@@ -305,10 +316,11 @@ abstract class Tx_Palm_Merger_AbstractRule implements Tx_Palm_Merger_RuleInterfa
 	/**
 	 * Sets nestedRules
 	 * @param Tx_Extbase_Persistence_ObjectStorage<Tx_Palm_Merger_AbstractRule> $nestedRules An object storage containing the nestedRuless to add
-	 * @return void
+	 * @return Tx_Palm_Merger_AbstractRule
 	 */
 	public function setNestedRules(Tx_Extbase_Persistence_ObjectStorage $nestedRules) {
 		$this->nestedRules = $nestedRules;
+		return $this;
 	}
 
 

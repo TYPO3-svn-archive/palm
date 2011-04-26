@@ -479,7 +479,7 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	 * @return null|string
 	 */
 	public function getPropertyNameForXmlValueType($valueType) {
-		if(!$this->isPropertyForXmlValue($valueName))
+		if(!isset($this->xmlValues[$valueType]['propertyName']))
 			return null;
 		return $this->xmlValues[$valueType]['propertyName'];
 	}
@@ -491,7 +491,7 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	 * @return null|string
 	 */
 	public function getPropertyNameForXmlRawValueType($valueType) {
-		if(!$this->isPropertyForXmlRawValue($valueName))
+		if(!isset($this->xmlRawValues[$valueType]['propertyName']))
 			return null;
 		return $this->xmlRawValues[$valueType]['propertyName'];
 	}

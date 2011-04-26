@@ -71,8 +71,48 @@ class Tx_Palm_ViewHelpers_Be_EntityLabelViewHelper extends Tx_Fluid_ViewHelpers_
 	 */
 	public function render(Tx_Extbase_DomainObject_DomainObjectInterface $entity) {
 		$tableName = $this->dataMapper->convertClassNameToTableName(get_class($entity));
-		$row = t3lib_BEfunc::getRecord($tableName, $entity->getUid());
-		return t3lib_BEfunc::getRecordTitle($tableName, $row);
+		t3lib_div::loadTCA($tableName);
+		$labels = Array();
+		if (isset($GLOBALS['TCA'][$tableName]['ctrl']['label'])) {
+			$labels[] = $GLOBALS['TCA'][$tableName]['ctrl']['label'];
+		}
+		if (isset($GLOBALS['TCA'][$tableName]['ctrl']['label_alt']) && isset($GLOBALS['TCA'][$tableName]['ctrl']['label_alt_force'])) {
+			$labels = array_merge($labels, t3lib_div::trimExplode(',', $GLOBALS['TCA'][$tableName]['ctrl']['label_alt']));
+		}
+		$columnNamePropertyNameMap = $this->buildColumnNamePropertyNameMap($entity);
+		$output = Array();
+		foreach ($labels as $labelColumnName) {
+			if (isset($columnNamePropertyNameMap[$labelColumnName])) {
+				$property = $columnNamePropertyNameMap[$labelColumnName];
+				$tempLabel = Tx_Extbase_Reflection_ObjectAccess::getProperty($entity, $property);
+				if (is_object($tempLabel) && $tempLabel instanceof Tx_Extbase_DomainObject_DomainObjectInterface) {
+					$output[] = $this->render($tempLabel);
+				} elseif (is_object($tempLabel) && $tempLabel instanceof DateTime) {
+					$output[] = $tempLabel->format('c');
+				} elseif (!is_object($tempLabel) && $tempLabel != '') {
+					$output[] = $tempLabel;
+				}
+			}
+		}
+		return implode(', ', $output);
+	}
+
+	/**
+	 * @param Tx_Extbase_DomainObject_DomainObjectInterface $entity
+	 * @return array
+	 */
+	protected function buildColumnNamePropertyNameMap(Tx_Extbase_DomainObject_DomainObjectInterface $entity) {
+		$columnNamePropertyNameMap = array();
+		$className = get_class($entity);
+		$dataMap = $this->dataMapper->getDataMap($className);
+		$properties = Tx_Extbase_Reflection_ObjectAccess::getGettablePropertyNames($entity);
+		foreach ($properties as $propertyName) {
+			if ($dataMap->isPersistableProperty($propertyName)) {
+				$columnMap = $dataMap->getColumnMap($propertyName);
+				$columnNamePropertyNameMap[$columnMap->getColumnName()] = $propertyName;
+			}
+		}
+		return $columnNamePropertyNameMap;
 	}
 }
 ?>

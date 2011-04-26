@@ -5,11 +5,18 @@
 </f:section>
 
 <f:section name="content">
-	<h2>Merge Rules for "{entityName}"</h2>
+	<h2>Select a rule to merge with an existing "{entityName}"</h2>
 	<p:be.table tableData="{rules}" headerData="{0:'File Name', 1:'External Target'}">
 		<p:be.table.column index="0">
 			<f:be.buttons.icon uri="{f:uri.action(action:'selectRecord', arguments:{entityName:PalmColumnData})}" icon="add" />
 			<f:link.action action="selectRecord" arguments="{fileLocation:PalmColumnData}">{PalmColumnData}</f:link.action>
+		</p:be.table.column>
+	</p:be.table>
+	<h2>Select a rule to import a new "{entityName}"</h2>
+	<p:be.table tableData="{rules}" headerData="{0:'File Name', 1:'External Target'}">
+		<p:be.table.column index="0">
+			<f:be.buttons.icon uri="{f:uri.action(action:'selectImportRecord', arguments:{entityName:PalmColumnData})}" icon="add" />
+			<f:link.action action="selectImportRecord" arguments="{fileLocation:PalmColumnData}">{PalmColumnData}</f:link.action>
 		</p:be.table.column>
 	</p:be.table>
 </f:section>
