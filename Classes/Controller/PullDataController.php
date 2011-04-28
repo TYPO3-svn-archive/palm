@@ -117,13 +117,13 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 			$rule->getSinglePathInCollection()
 		);
 		$repository = $this->mergerService->getXmlRepositoryByRule($rule);
-		$updated = 0;
+		$added = 0;
 		foreach($repository->findAll() as $entity) {
 			if (!$this->mergerService->isEntityAlreadyPresent($rule, $entity)) {
 				$this->mergerService->mergeByRule($entity, $rule);
-				$repository->update($entity);
-				$updated++;
-				if ($updated >= 20) {
+				$repository->add($entity);
+				$added++;
+				if ($added >= 20) {
 					$this->objectManager->get('Tx_Extbase_Persistence_Manager')->persistAll();
 					$updated = 0;
 				}
@@ -195,6 +195,7 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 		$updated = 0;
 		foreach($repository->findAll() as $entity) {
 			if ($this->mergerService->isRuleApplicableOnEntity($rule, $entity)) {
+				set_time_limit(30);
 				$this->mergerService->mergeByRule($entity, $rule);
 				$repository->update($entity);
 				$updated++;
