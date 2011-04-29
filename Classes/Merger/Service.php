@@ -368,6 +368,9 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 		$limit = ($limit == NULL || $result->length < $limit) ? $result->length : $offset + $limit;
 		$resultStorage = Array();
 		for ($i=$offset; $i < $limit; $i++) {
+			if ($result->item($i) === NULL) {
+				continue;
+			}
 			$doc = $this->objectManager->create('Tx_Palm_DOM_Document');
 			$doc->appendChild($doc->importNode($result->item($i), true));
 			$newEntity = $this->xmlSerializer->unserialize($doc, $entityName);
