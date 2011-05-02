@@ -470,6 +470,9 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 				break;
 			case Tx_Palm_Merger_RuleInterface::ACTION_MATCH_INDIVIDUAL:
 				if($scope === self::GETTER_SCOPE_OBJECT) {
+					if (!is_object($internalProperty)) {
+						throw new Exception('The scope is defined as Object, but other than null or object is given. This error is potentially related to Extbase issue #25708.' ,1304080647);
+					}
 					$this->mergeEntitiesByRule($externalProperty, $internalProperty, $specificRule);
 				} elseif ($scope === self::GETTER_SCOPE_COLLECTION) {
 					$matchOns = t3lib_div::trimExplode(',', $specificRule->getMatchOn());
