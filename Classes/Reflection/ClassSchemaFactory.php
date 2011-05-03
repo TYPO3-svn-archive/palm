@@ -124,26 +124,31 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 				if (isset($propertyConfiguration['wrapperName'])) {
 					$classSchema->addXmlElementWrapper($propertyConfiguration['wrapperName'], $propertyName);
 				}
-				foreach ($propertyConfiguration as $valueType=>$mappingConfiguration) {
-					if (isset($propertyConfiguration['removeMappingFor'])) {
-						if (t3lib_div::inList($propertyConfiguration['removeMappingFor'], $valueType)) {
+				if (isset($propertyConfiguration['removeMappingFor'])) {
+					$removeMappingFor = t3lib_div::trimExplode(',', $propertyConfiguration['removeMappingFor']);
+					foreach ($removeMappingFor as $valueType) {
+						$valueType = Tx_Extbase_Utility_TypeHandling::normalizeType($valueType);
+						if (isset($propertyConfiguration[$valueType])) {
 							unset($propertyConfiguration[$valueType]);
-							$mappingConfiguration = array();
 						}
 					}
-					switch ($mappingConfiguration) {
-						case array_key_exists('elementName', $mappingConfiguration):
-							$classSchema->addXmlElement($mappingConfiguration['elementName'], $valueType, $propertyName, $mappingConfiguration['description']);
-							break;
-						case array_key_exists('attributeName', $mappingConfiguration):
-							$classSchema->addXmlAttribute($mappingConfiguration['attributeName'], $valueType, $propertyName, $mappingConfiguration['description']);
-							break;
-						case array_key_exists('isValue', $mappingConfiguration):
-							$classSchema->addXmlValue($valueType, $propertyName, $mappingConfiguration['description']);
-							break;
-						case array_key_exists('isRawValue', $mappingConfiguration):
-							$classSchema->addXmlRawValue($valueType, $propertyName, $mappingConfiguration['description']);
-							break;
+				}
+				foreach ($propertyConfiguration as $valueType=>$mappingConfiguration) {
+					if (is_array($mappingConfiguration)) {
+						switch ($mappingConfiguration) {
+							case array_key_exists('elementName', $mappingConfiguration):
+								$classSchema->addXmlElement($mappingConfiguration['elementName'], $valueType, $propertyName, $mappingConfiguration['description']);
+								break;
+							case array_key_exists('attributeName', $mappingConfiguration):
+								$classSchema->addXmlAttribute($mappingConfiguration['attributeName'], $valueType, $propertyName, $mappingConfiguration['description']);
+								break;
+							case array_key_exists('isValue', $mappingConfiguration):
+								$classSchema->addXmlValue($valueType, $propertyName, $mappingConfiguration['description']);
+								break;
+							case array_key_exists('isRawValue', $mappingConfiguration):
+								$classSchema->addXmlRawValue($valueType, $propertyName, $mappingConfiguration['description']);
+								break;
+						}
 					}
 				}
 			} else {
@@ -197,6 +202,7 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 				$description	= $this->reflectionService->getPropertyDescription($className, $propertyName);
 				foreach($tagValues as $tagValue) {
 					list($nodeType, $valueType, $nodeName) = preg_split('/\s*\(\s*|\s*\)\s*|\s*\,\s*/i', $tagValue, 4, PREG_SPLIT_NO_EMPTY);
+					$valueType = Tx_Extbase_Utility_TypeHandling::normalizeType($valueType);
 					// Attention! Wrapper has no valueType and Value no Node Name
 					if(!isset($nodeType) || !in_array($nodeType, array('Wrapper','Element', 'Attribute', 'Value'))) {
 						throw new Tx_Palm_Reflection_Exception_InvalidXmlNodeType('Invalid xml node type "' . $nodeType . '" at ' . $className . '::' . $propertyName .  ' . Must be one of Wrapper/Element/Attribute/Value.', 1289409062);
