@@ -13,6 +13,11 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	 */
 	protected $configurationManager;
 
+	/*
+	 * @var Tx_Extbase_Persistence_Mapper_DataMapper
+	 */
+	protected $dataMapper;
+
 	/**
 	 * @var array
 	 */
@@ -54,6 +59,15 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	public function injectConfigurationManager(Tx_Palm_Configuration_ConfigurationManager $configurationManager) {
 		$this->configurationManager = $configurationManager;
 		$this->configuration = $configurationManager->getConfiguration(Tx_Palm_Configuration_ConfigurationManager::CONFIGURATION_TYPE_FRAMEWORK);
+	}
+
+	/**
+	 * Injector method for a Tx_Extbase_Persistence_Mapper_DataMapper
+	 *
+	 * @var Tx_Extbase_Persistence_Mapper_DataMapper
+	 */
+	public function injectDataMapper(Tx_Extbase_Persistence_Mapper_DataMapper $dataMapper) {
+		$this->dataMapper = $dataMapper;
 	}
 
 	/**
@@ -102,12 +116,13 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	 * @return DOMDocument
 	 */
 	public function serialize($obj) {
+		/** @var Tx_Palm_Reflection_ClassSchema $classSchema */
 		$classSchema = $this->reflectionService->getClassSchema($obj);
+		/** @var Tx_Palm_DOM_Document $doc */
 		$doc = $this->objectManager->create('Tx_Palm_DOM_Document');
 		$root = $doc->createElement($classSchema->getXmlRootName());
 		$doc->appendChild($root);
 		$this->serializeObject($obj, $root);
-//		die();
 		return $doc;
 	}
 
@@ -117,6 +132,7 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	 * @param DOMElement $target
 	 */
 	protected function serializeObject($obj, DOMElement $target) {
+		/** @var Tx_Palm_Reflection_ClassSchema $classSchema */
 		$classSchema = $this->reflectionService->getClassSchema($obj);
 		if (isset($this->configuration['mapping']['xml']['classes'][$classSchema->getClassName()]['debug']) && $this->configuration['mapping']['xml']['classes'][$classSchema->getClassName()]['debug']) {
 			t3lib_utility_Debug::debug($classSchema->getProperties());
@@ -243,6 +259,12 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 			$propertyTransformation = Tx_Extbase_Utility_TypoScript::convertPlainArrayToTypoScriptArray($this->configuration['transformIn'][$format]['classes'][$className]['properties'][$propertyName]);
 			// TODO elaborate why this is neccessary
 			$GLOBALS['TSFE']->cObjectDepthCounter = 50;
+			if (!isset($GLOBALS['TSFE']->tmpl)) {
+				$GLOBALS['TSFE']->tmpl = t3lib_div::makeInstance('t3lib_TStemplate');
+			}
+			if (!isset($GLOBALS['TT'])) {
+				$GLOBALS['TT'] = t3lib_div::makeInstance('t3lib_TimeTrackNull');
+			}
 			$this->contentObject->start($sourceArray);
 			$this->contentObject->setCurrentVal($value);
 			$value = $this->contentObject->cObjGetSingle($propertyTransformationObject, $propertyTransformation);
@@ -280,6 +302,7 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 			return $value ? "true" : "false";
 
 		if ($value instanceof DateTime) {
+			/** @var DateTime $value */
 //			$result = $value->format("o-m-d\TH:i:s\Z");
 			$result = $value->format("c");
 //			$time = $value->format("H:i:s");
@@ -311,11 +334,22 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	/**
 	 * Maps the given DOMElement to an property mapper conform array
 	 * @param DOMElement $source
-	 * @param unknown_type $class
+	 * @param string $class
 	 * @return array
 	 */
-	protected function mapXmlToArray(DOMElement $source, $class) {
-		$classSchema = $this->reflectionService->getClassSchema($class);
+	protected function mapXmlToArray(DOMNode $source, $class) {
+		$classMaps = array($this->reflectionService->getClassSchema($class));
+
+		// We have to check the subclasses also for properties, as we don't know yet what the target type will be
+		$dataMap = $this->dataMapper->getDataMap($class);
+		if ($dataMap !== NULL) {
+			foreach($dataMap->getSubclasses() as $subclass) {
+				$subclassMap = $this->reflectionService->getClassSchema($subclass);
+				if ($subclassMap !== NULL) {
+					$classMaps[] = $subclassMap;
+				}
+			}
+		}
 
 		$bag = array();
 		$potentialProperties = array();
@@ -328,72 +362,31 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 		}
 
 		foreach($potentialProperties as $potentialProperty) {
-			$propertyName	= null;
-			$propertyType	= null;
-			$nodeValue		= null;
-			switch($potentialProperty) {
-				case $potentialProperty instanceof DOMAttr:
-					$propertyName = $classSchema->getPropertyNameForXmlAttribute($potentialProperty->name);
-					$propertyType = $classSchema->getPropertyTypeForXmlAttribute($potentialProperty->name);
-					$nodeValue = $this->parseAtomicValue($potentialProperty->value, $propertyType);
-					break;
-				case $potentialProperty instanceof DOMElement:
-					$propertyName = $classSchema->getPropertyNameForXmlElement($potentialProperty->tagName);
-					if (!$propertyName) {
-						// Could this be a Wrapper Element?
-						$propertyName = $classSchema->getPropertyNameForXmlElementWrapper($potentialProperty->tagName);
-						$nodeValue = $this->mapXmlToArray($potentialProperty, $class);
-						// Skip the type parsing. Types are already parsed.
-						if ($propertyName !== NULL) {
-							$bag[$propertyName] = $nodeValue[$propertyName];
-						}
-					} else {
-						$propertyType = $classSchema->getPropertyTypeForXmlElement($potentialProperty->tagName);
-						if ($this->isAtomicType($propertyType)) {
-							$nodeValue = $this->parseAtomicValue($potentialProperty->textContent, $propertyType);
-						} elseif ($propertyType) {
-							$nodeValue = $this->mapXmlToArray($potentialProperty, $propertyType);
-						}
-					}
-					break;
-				case $potentialProperty instanceof DOMText:
-					// TODO: This handling doesn't machtch the handling of serializer
-					$potentialPropertyText = trim($potentialProperty->wholeText);
-					$xmlValueTypes = $classSchema->getXmlValueTypes();
-					if (!empty($potentialPropertyText) && empty($xmlValueTypes)) {
-						// Potentially someone wants to give an existing id
-						return $potentialPropertyText;
-					} elseif (!empty($potentialPropertyText) && !empty($xmlValueTypes)) {
-						$propertyType = $this->getValueType($potentialPropertyText);
-						$propertyName = $classSchema->getPropertyNameForXmlValueType($propertyType);
-						$nodeValue .= $potentialPropertyText;
-					}
-					break;
-				default:
-					continue 2;
-					break;
-			}
-			if ($propertyName !== NULL && $propertyType) {
-				$propertyMetaData = $classSchema->getProperty($propertyName);
-				if ($propertyType != $propertyMetaData['type']) {
-					// XML Type does not equal Model Type
-					if ($propertyType != $propertyMetaData['elementType']) {
-						// Probably we're dealing with subclassed objects
-						$bag[$propertyName] = $nodeValue;
-					} elseif ($propertyType == $propertyMetaData['elementType'] && in_array($propertyMetaData['type'], array('array', 'ArrayObject', 'Tx_Extbase_Persistence_ObjectStorage'))) {
+			foreach($classMaps as $classSchema) {
+				$propertyMapping = $this->mapPotentialPropertyToArray($potentialProperty, $classSchema);
+				if ($propertyMapping !== NULL) {
+					$propertyMetaData = $classSchema->getProperty($propertyMapping['name']);
+					if ($propertyMapping['type'] == $propertyMetaData['elementType'] && in_array($propertyMetaData['type'], array('array', 'ArrayObject', 'Tx_Extbase_Persistence_ObjectStorage'))) {
 						// Oh, nice. We're dealing with a persistence storage
-						$bag[$propertyName][] = $nodeValue;
+						$bag[$propertyMapping['name']][] = $propertyMapping['value'];
 					} else {
-						// TODO: Check what to do here. Potentially nothing
+						$bag[$propertyMapping['name']] = $propertyMapping['value'];
 					}
-				} else {
-					$bag[$propertyName] = $nodeValue;
+					break;
 				}
-			} else {
-				continue;
 			}
 		}
-		$properties = array_keys($classSchema->getProperties());
+		// We can define also new properties via TS config so we have to consider all properties, even subclassed ones
+		$properties = Array();
+		foreach($classMaps as $classSchema) {
+			$properties = array_keys($classSchema->getProperties());
+		}
+		if (
+			isset($this->configuration['transformIn']['xml']['classes'][$class]['properties']) &&
+			is_array($this->configuration['transformIn']['xml']['classes'][$class]['properties'])
+		) {
+			$properties = array_merge($properties, array_keys($this->configuration['transformIn']['xml']['classes'][$class]['properties']));
+		}
 		foreach ($properties as $propertyName) {
 			$tempPropertyValue = $this->transformForInput($bag, $class, $propertyName, $bag[$propertyName]);
 			if ($tempPropertyValue !== NULL && $tempPropertyValue !== '') {
@@ -403,6 +396,73 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 		return $bag;
 	}
 
+	/**
+	 * @param DOMNode $potentialProperty
+	 * @param Tx_Palm_Reflection_ClassSchema $classSchema
+	 * @return array
+	 */
+	protected function mapPotentialPropertyToArray(DOMNode $potentialProperty, Tx_Palm_Reflection_ClassSchema $classSchema) {
+		$propertyType = NULL;
+		$propertyName = NULL;
+		$nodeValue = NULL;
+		switch($potentialProperty) {
+			case $potentialProperty instanceof DOMAttr:
+				$propertyName = $classSchema->getPropertyNameForXmlAttribute($potentialProperty->name);
+				$propertyType = $classSchema->getPropertyTypeForXmlAttribute($potentialProperty->name);
+				$nodeValue = $this->parseAtomicValue($potentialProperty->value, $propertyType);
+				break;
+			case $potentialProperty instanceof DOMElement:
+				$propertyName = $classSchema->getPropertyNameForXmlElement($potentialProperty->tagName);
+				if (!$propertyName) {
+					// Could this be a Wrapper Element?
+					$propertyName = $classSchema->getPropertyNameForXmlElementWrapper($potentialProperty->tagName);
+					$nodeValue = $this->mapXmlToArray($potentialProperty, $classSchema->getClassName());
+					// Skip the type parsing. Types are already parsed.
+					if ($propertyName !== NULL) {
+						$propertyMeta = $classSchema->getProperty($propertyName);
+						if ($propertyMeta['type'] !== NULL) {
+							return Array(
+								'type'	=> $propertyMeta['type'],
+								'name'	=> $propertyName,
+								'value'	=> $nodeValue[$propertyName]
+							);
+						}
+					}
+				} else {
+					$propertyType = $classSchema->getPropertyTypeForXmlElement($potentialProperty->tagName);
+					if ($this->isAtomicType($propertyType)) {
+						$nodeValue = $this->parseAtomicValue($potentialProperty->textContent, $propertyType);
+					} elseif ($propertyType) {
+						$nodeValue = $this->mapXmlToArray($potentialProperty, $propertyType);
+					}
+				}
+				break;
+			case $potentialProperty instanceof DOMText:
+				// TODO: This handling doesn't machtch the handling of serializer
+				$potentialPropertyText = trim($potentialProperty->wholeText);
+				$xmlValueTypes = $classSchema->getXmlValueTypes();
+				if (!empty($potentialPropertyText) && empty($xmlValueTypes)) {
+					// Potentially someone wants to give an existing id
+					return array(
+						'type'	=> $this->getValueType($potentialPropertyText),
+						'name'	=> '__identity',
+						'value'	=> $potentialPropertyText
+					);
+				} elseif (!empty($potentialPropertyText) && !empty($xmlValueTypes)) {
+					$propertyType = $this->getValueType($potentialPropertyText);
+					$propertyName = $classSchema->getPropertyNameForXmlValueType($propertyType);
+					$nodeValue = $potentialPropertyText;
+				}
+				break;
+		}
+		if ($propertyType !== NULL & $propertyName !== NULL) {
+			return array(
+				'type'	=> $propertyType,
+				'name'	=> $propertyName,
+				'value'	=> $nodeValue
+			);
+		}
+	}
 
 	/**
 	 * @param mixed $type

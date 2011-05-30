@@ -116,19 +116,14 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 			$record,
 			$rule->getSinglePathInCollection()
 		);
-		$repository = $this->mergerService->getXmlRepositoryByRule($rule);
-		$added = 0;
-		foreach($repository->findAll() as $entity) {
-			if (!$this->mergerService->isEntityAlreadyPresent($rule, $entity)) {
-				$this->mergerService->mergeByRule($entity, $rule);
-				$repository->add($entity);
-				$added++;
-				if ($added >= 20) {
-					$this->objectManager->get('Tx_Extbase_Persistence_Manager')->persistAll();
-					$updated = 0;
-				}
-			}
-		}
+		$repository = $this->mergerService->getRepositoryByRule($rule);
+		$externalEntity = $this->mergerService->getExternalEntityByExternalPath(
+			$this->mergerService->getDOMByRule($rule),
+			$resolvedPath,
+			$rule->getEntityName()
+		);
+		$repository->add($externalEntity);
+		$this->objectManager->get('Tx_Extbase_Persistence_Manager')->persistAll();
 		$this->flashMessageContainer->add('All records have been successfully merged!', t3lib_FlashMessage::OK);
 		$this->redirectToURI(t3lib_div::sanitizeLocalUrl(t3lib_div::getIndpEnv('HTTP_REFERER')));
 	}
@@ -145,18 +140,18 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 		$rule = $this->mergerService->getPullRuleByFileLocation($fileLocation);
 		$repository = $this->mergerService->getRepositoryByRule($rule);
 		$xmlRepository = $this->mergerService->getXmlRepositoryByRule($rule);
-		$updated = 0;
+		$added = 0;
 		foreach($xmlRepository->findAll() as $entity) {
-			if ($this->mergerService->isRuleApplicableOnEntity($rule, $entity)) {
-				$this->mergerService->mergeByRule($entity, $rule);
+			if (!$this->mergerService->isEntityAlreadyPresent($rule, $entity)) {
 				$repository->add($entity);
-				$updated++;
-				if ($updated >= 20) {
+				$added++;
+				if ($added >= 20) {
 					$this->objectManager->get('Tx_Extbase_Persistence_Manager')->persistAll();
-					$updated = 0;
+					$added = 0;
 				}
 			}
 		}
+		$this->objectManager->get('Tx_Extbase_Persistence_Manager')->persistAll();
 		$this->flashMessageContainer->add('All records have been successfully merged!', t3lib_FlashMessage::OK);
 		$this->redirectToURI(t3lib_div::sanitizeLocalUrl(t3lib_div::getIndpEnv('HTTP_REFERER')));
 	}

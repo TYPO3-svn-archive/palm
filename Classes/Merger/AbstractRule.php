@@ -349,7 +349,7 @@ abstract class Tx_Palm_Merger_AbstractRule implements Tx_Palm_Merger_RuleInterfa
 	/**
 	 * Returns the nestedRules
 	 *
-	 * @return Tx_Extbase_Persistence_ObjectStorage An object storage containing the nestedRule
+	 * @return Tx_Extbase_Persistence_ObjectStorage<Tx_Palm_Merger_AbstractRule> An object storage containing the nestedRule
 	 */
 	public function getNestedRules() {
 		return $this->nestedRules;

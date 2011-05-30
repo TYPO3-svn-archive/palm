@@ -41,9 +41,9 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 	protected $configurationManager;
 
 	/**
-	 * @var Tx_Extbase_Reflection_Service
+	 * @var Tx_Palm_Reflection_Service
 	 */
-	private $reflectionService;
+	protected $reflectionService;
 
 	/**
 	 * @param Tx_Palm_Configuration_ConfigurationManager $configurationManager
@@ -57,9 +57,9 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 
 	/**
 	 * Injector Method for reflection service
-	 * @param Tx_Extbase_Reflection_Service $reflectionService
+	 * @param Tx_PalmReflection_Service $reflectionService
 	 */
-	public function injectReflectionService(Tx_Extbase_Reflection_Service $reflectionService) {
+	public function injectReflectionService(Tx_Palm_Reflection_Service $reflectionService) {
 		$this->reflectionService = $reflectionService;
 	}
 
@@ -95,7 +95,7 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 		}
 
 		$classParents = class_parents($className);
-			$overriddenProperties = array();
+		$overriddenProperties = array();
 		foreach ($classParents as $classParent) {
 			if (isset($this->configuration['classes'][$classParent]['properties']) && is_array($this->configuration['classes'][$classParent]['properties'])) {
 				foreach ($this->configuration['classes'][$classParent]['properties'] as $propertyName=>$propertyConfiguration) {

@@ -17,7 +17,7 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 	/**
 	 * Contains available pull rules
 	 *
-	 * @var Tx_Extbase_Persistence_ObjectStorage
+	 * @var Tx_Extbase_Persistence_ObjectStorage<Tx_Palm_Merger_RootRule>
 	 */
 	protected $pullRules;
 
@@ -121,10 +121,11 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 	 *
 	 * @param Tx_Palm_Merger_AbstractRule $rule
 	 */
-	protected function initializeDomForRule(Tx_Palm_Merger_AbstractRule $rule) {
-		if ($this->pullRules->offsetGet($rule) instanceof Tx_Palm_Merger_AbstractRule) {
+	protected function initializeDomForRule(Tx_Palm_Merger_RootRule $rule) {
+		if ($this->pullRules->offsetGet($rule) instanceof Tx_Palm_Merger_RootRule) {
 			return;
 		}
+		/** @var Tx_Palm_DOM_Document $dom */
 		$dom = $this->objectManager->create('Tx_Palm_DOM_Document');
 		$dom->load(t3lib_div::getFileAbsFileName($rule->getFileLocation()));
 		$this->pullRules->offsetSet($rule, $dom);
@@ -147,6 +148,7 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 	public function getPullableEntities() {
 		$this->initializePullRules();
 		$entities = Array();
+		/** @var Tx_Palm_Merger_RootRule $rule */
 		foreach ($this->pullRules as $rule) {
 			if (!isset($entities[$rule->getEntityName()])) {
 				$entities[$rule->getEntityName()] = 0;
@@ -164,6 +166,7 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 	public function getPullRulesByEntityName($entityName) {
 		$this->initializePullRules();
 		$rules = Array();
+		/** @var Tx_Palm_Merger_RootRule $rule */
 		foreach ($this->pullRules as $rule) {
 			if($rule->getEntityName() == $entityName) {
 				$rules[$rule->getFileLocation()] = $rule;
@@ -179,6 +182,7 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 	 */
 	public function getPullRuleByFileLocation($fileLocation) {
 		$this->initializePullRules();
+		/** @var Tx_Palm_Merger_RootRule $rule */
 		foreach ($this->pullRules as $rule) {
 			if($rule->getFileLocation() == $fileLocation) {
 				return $rule;
@@ -206,10 +210,10 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 	}
 
 	/**
-	 * @param Tx_Palm_Merger_AbstractRule $rule
+	 * @param Tx_Palm_Merger_RootRule $rule
 	 * @return Tx_Extbase_Persistence_Repository
 	 */
-	public function getRepositoryByRule(Tx_Palm_Merger_AbstractRule $rule) {
+	public function getRepositoryByRule(Tx_Palm_Merger_RootRule $rule) {
 		if (!class_exists($rule->getRepositoryName())) {
 			die('PullDataController: This should not happen. The check occurs already in rule builder');
 		}
@@ -218,21 +222,24 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 	}
 
 	/**
-	 * @param Tx_Palm_Merger_AbstractRule $rule
+	 * @param Tx_Palm_Merger_RootRule $rule
 	 * @return Tx_Extbase_Persistence_Repository
 	 */
-	public function getXmlRepositoryByRule(Tx_Palm_Merger_AbstractRule $rule) {
+	public function getXmlRepositoryByRule(Tx_Palm_Merger_RootRule $rule) {
 		if (!class_exists($rule->getRepositoryName())) {
 			die('PullDataController: This should not happen. The check occurs already in rule builder');
 		}
+		/** @var Tx_Extbase_Object_Container_Container $container */
 		$container = t3lib_div::makeInstance('Tx_Extbase_Object_Container_Container');
 		$container->registerImplementation('Tx_Extbase_Persistence_QueryResultInterface', 'Tx_Palm_Persistence_QueryResult');
+		/** @var Tx_Palm_Persistence_MergerQuerySettings $defaultQuerySettings */
 		$defaultQuerySettings = $this->objectManager->create('Tx_Palm_Persistence_MergerQuerySettings');
 		$defaultQuerySettings->setApplicableRule($rule);
 		$frameworkConfiguration = $this->objectManager
 				->get('Tx_Extbase_Configuration_ConfigurationManagerInterface')
 				->getConfiguration(Tx_Extbase_Configuration_ConfigurationManagerInterface::CONFIGURATION_TYPE_FRAMEWORK);
 		$defaultQuerySettings->setStoragePageIds(t3lib_div::intExplode(',', $frameworkConfiguration['persistence']['storagePid']));
+		/** @var Tx_Extbase_Persistence_Repository $repository */
 		$repository = $this->objectManager->get($rule->getRepositoryName());
 		$repository->setDefaultQuerySettings($defaultQuerySettings);
 		return $repository;
@@ -258,6 +265,7 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 	 */
 	public function isRuleApplicableOnEntity(Tx_Palm_Merger_AbstractRule $rule, Tx_Extbase_DomainObject_DomainObjectInterface $entity) {
 		$dom = $this->getDOMByRule($rule);
+		/** @var DOMXPath $xpath */
 		$xpath = $this->objectManager->create('DOMXPath', $dom);
 		$externalPath = $this->getResolvedSinglePathInCollection($rule, $entity);
 		return (bool) $xpath->query($externalPath)->length;
@@ -282,6 +290,7 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 			}
 			$matchOnParts = t3lib_div::trimExplode('.', $rule->getMatchOn());
 			$matchOnTypes = array();
+			/** @var Tx_Extbase_Persistence_QueryFactoryInterface $queryFactory  */
 			$queryFactory = $this->objectManager->get('Tx_Extbase_Persistence_QueryFactoryInterface');
 			if (!empty($matchOnParts)) {
 				$classSchema = $this->reflectionService->getClassSchema($entity);
@@ -307,10 +316,10 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 	/**
 	 * Enter description here ...
 	 *
-	 * @param Tx_Palm_Merger_AbstractRule $rule
+	 * @param Tx_Palm_Merger_RootRule $rule
 	 * @return string
 	 */
-	public function getPropertyPathFromRule(Tx_Palm_Merger_AbstractRule $rule) {
+	public function getPropertyPathFromRule(Tx_Palm_Merger_RootRule $rule) {
 		preg_match('|(?<=\{)(.*)(?=\})|', $rule->getSinglePathInCollection(), $entityPropertyPath);
 		$entityPropertyPath = current($entityPropertyPath);
 		if(!$entityPropertyPath) {
@@ -323,9 +332,9 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 	/**
 	 * Enter description here ...
 	 * @param Tx_Extbase_DomainObject_AbstractDomainObject $entity
-	 * @param Tx_Palm_Merger_AbstractRule $rule
+	 * @param Tx_Palm_Merger_RootRule $rule
 	 */
-	public function mergeByRule(Tx_Extbase_DomainObject_AbstractDomainObject $entity, Tx_Palm_Merger_AbstractRule $rule) {
+	public function mergeByRule(Tx_Extbase_DomainObject_AbstractDomainObject $entity, Tx_Palm_Merger_RootRule $rule) {
 		if(!$this->isRuleApplicableOnEntity($rule, $entity)) {
 			// TODO throw exception that this rule is not applicable
 		}
@@ -344,11 +353,13 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 	 * @return Object
 	 */
 	public function getExternalEntityByExternalPath(DOMDocument $dom, $externalPath, $entityName) {
+		/** @var DOMXPath $xpath */
 		$xpath = $this->objectManager->create('DOMXPath', $dom);
 		$result = $xpath->query($externalPath);
 		if($result->length > 1) {
 			// TODO throw exception that result is not distinct
 		}
+		/** @var Tx_Palm_DOM_Document $doc */
 		$doc = $this->objectManager->create('Tx_Palm_DOM_Document');
 		$doc->appendChild($doc->importNode($result->item(0), true));
 		return $this->xmlSerializer->unserialize($doc, $entityName);
@@ -363,6 +374,7 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 	 * @return array
 	 */
 	public function getExternalEntitiesByExternalPath(DOMDocument $dom, $externalPath, $entityName, $offset = 0, $limit = null) {
+		/** @var DOMXPath $xpath */
 		$xpath = $this->objectManager->create('DOMXPath', $dom);
 		$result = $xpath->query($externalPath);
 		$limit = ($limit == NULL || $result->length < $limit) ? $result->length : $offset + $limit;
@@ -371,6 +383,7 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 			if ($result->item($i) === NULL) {
 				continue;
 			}
+			/** @var Tx_Palm_DOM_Document $doc */
 			$doc = $this->objectManager->create('Tx_Palm_DOM_Document');
 			$doc->appendChild($doc->importNode($result->item($i), true));
 			$newEntity = $this->xmlSerializer->unserialize($doc, $entityName);
@@ -541,4 +554,5 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 	}
 
 }
+
 ?>
