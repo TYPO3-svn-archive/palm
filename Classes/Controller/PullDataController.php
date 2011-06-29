@@ -31,6 +31,13 @@
 class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_ActionController {
 
 	/**
+	 * Contains hookObjectsArr
+	 *
+	 * @var array
+	 */
+	protected $hookObjectsArr = array();
+
+	/**
 	 * @var Tx_Palm_Merger_Service
 	 */
 	protected $mergerService;
@@ -42,6 +49,18 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 	 */
 	public function injectMergerService(Tx_Palm_Merger_Service $mergerService) {
 		$this->mergerService = $mergerService;
+	}
+
+	/**
+	 * @return void
+	 */
+	public function initializeAction() {
+		global $TYPO3_CONF_VARS;
+		if (is_array($TYPO3_CONF_VARS['SC_OPTIONS']['t3lib/class.t3lib_tcemain.php']['processDatamapClass'])) {
+			foreach ($TYPO3_CONF_VARS['SC_OPTIONS']['t3lib/class.t3lib_tcemain.php']['processDatamapClass'] as $classRef) {
+				$this->hookObjectsArr[] = t3lib_div::getUserObj($classRef);
+			}
+		}
 	}
 
 	public function indexAction() {
@@ -124,6 +143,21 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 		);
 		$repository->add($externalEntity);
 		$this->objectManager->get('Tx_Extbase_Persistence_Manager')->persistAll();
+		$parent = t3lib_div::makeInstance('t3lib_TCEmain');
+		foreach ($this->hookObjectsArr as $hookObj) {
+			if (method_exists($hookObj, 'processDatamap_afterDatabaseOperations')) {
+				/** @var Tx_Extbase_Persistence_Mapper_DataMap $dataMap */
+				$dataMap = $this->objectManager->get('Tx_Palm_Persistence_Mapper_DataMapper')->getDataMap(get_class($externalEntity));
+				$parent->substNEWwithIDs = Array(
+					$externalEntity->getUid() => $externalEntity->getUid()
+				);
+				$fieldArray = Array(
+					'uid'	=> $externalEntity->getUid(),
+					'pid'	=> $externalEntity->getPid()
+				);
+				$hookObj->processDatamap_afterDatabaseOperations('new', $dataMap->getTableName(), $externalEntity->getUid(), $fieldArray, $parent);
+			}
+		}
 		$this->flashMessageContainer->add('All records have been successfully merged!', t3lib_FlashMessage::OK);
 		$this->redirectToURI(t3lib_div::sanitizeLocalUrl(t3lib_div::getIndpEnv('HTTP_REFERER')));
 	}
@@ -140,18 +174,34 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 		$rule = $this->mergerService->getPullRuleByFileLocation($fileLocation);
 		$repository = $this->mergerService->getRepositoryByRule($rule);
 		$xmlRepository = $this->mergerService->getXmlRepositoryByRule($rule);
-		$added = 0;
+		$added = Array();
 		foreach($xmlRepository->findAll() as $entity) {
 			if (!$this->mergerService->isEntityAlreadyPresent($rule, $entity)) {
 				$repository->add($entity);
-				$added++;
-				if ($added >= 20) {
+				$added[] = $entity;
+				if (count($added) % 20 == 0) {
 					$this->objectManager->get('Tx_Extbase_Persistence_Manager')->persistAll();
-					$added = 0;
 				}
 			}
 		}
 		$this->objectManager->get('Tx_Extbase_Persistence_Manager')->persistAll();
+		$parent = t3lib_div::makeInstance('t3lib_TCEmain');
+		foreach ($this->hookObjectsArr as $hookObj) {
+			if (method_exists($hookObj, 'processDatamap_afterDatabaseOperations')) {
+				foreach ($added as $externalEntity) {
+					/** @var Tx_Extbase_Persistence_Mapper_DataMap $dataMap */
+					$dataMap = $this->objectManager->get('Tx_Palm_Persistence_Mapper_DataMapper')->getDataMap(get_class($externalEntity));
+					$parent->substNEWwithIDs = Array(
+						$externalEntity->getUid()=> $externalEntity->getUid()
+					);
+					$fieldArray = Array(
+						'uid'	=> $externalEntity->getUid(),
+						'pid'	=> $externalEntity->getPid()
+					);
+					$hookObj->processDatamap_afterDatabaseOperations('new', $dataMap->getTableName(), $externalEntity->getUid(), $fieldArray, $parent);
+				}
+			}
+		}
 		$this->flashMessageContainer->add('All records have been successfully merged!', t3lib_FlashMessage::OK);
 		$this->redirectToURI(t3lib_div::sanitizeLocalUrl(t3lib_div::getIndpEnv('HTTP_REFERER')));
 	}
@@ -172,6 +222,18 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 		$this->mergerService->mergeByRule($entity, $rule);
 		$repository->update($entity);
 		$this->objectManager->get('Tx_Extbase_Persistence_Manager')->persistAll();
+		$parent = t3lib_div::makeInstance('t3lib_TCEmain');
+		foreach ($this->hookObjectsArr as $hookObj) {
+			if (method_exists($hookObj, 'processDatamap_afterDatabaseOperations')) {
+				/** @var Tx_Extbase_Persistence_Mapper_DataMap $dataMap */
+				$dataMap = $this->objectManager->get('Tx_Palm_Persistence_Mapper_DataMapper')->getDataMap(get_class($entity));
+				$fieldArray = Array(
+					'uid'	=> $entity->getUid(),
+					'pid'	=> $entity->getPid()
+				);
+				$hookObj->processDatamap_afterDatabaseOperations('update', $dataMap->getTableName(), $entity->getUid(), $fieldArray, $parent);
+			}
+		}
 		$this->flashMessageContainer->add('The record with the uid ' . $record . ' has been successfully merged!', t3lib_FlashMessage::OK);
 		$this->redirectToURI(t3lib_div::sanitizeLocalUrl(t3lib_div::getIndpEnv('HTTP_REFERER')));
 	}
@@ -187,17 +249,31 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 		$this->objectManager->get('Tx_Palm_Persistence_Mapper_DataMapper')->setEnableLazyLoading(false);
 		$rule = $this->mergerService->getPullRuleByFileLocation($fileLocation);
 		$repository = $this->mergerService->getRepositoryByRule($rule);
-		$updated = 0;
+		$updated = Array();
 		foreach($repository->findAll() as $entity) {
 			if ($this->mergerService->isRuleApplicableOnEntity($rule, $entity)) {
 				set_time_limit(90);
 				echo 'timelimit set';
 				$this->mergerService->mergeByRule($entity, $rule);
 				$repository->update($entity);
-				$updated++;
-				if ($updated >= 20) {
+				$updated[] = $entity;
+				if (count($updated) % 20 == 0) {
 					$this->objectManager->get('Tx_Extbase_Persistence_Manager')->persistAll();
-					$updated = 0;
+				}
+			}
+		}
+		$this->objectManager->get('Tx_Extbase_Persistence_Manager')->persistAll();
+		$parent = t3lib_div::makeInstance('t3lib_TCEmain');
+		foreach ($this->hookObjectsArr as $hookObj) {
+			if (method_exists($hookObj, 'processDatamap_afterDatabaseOperations')) {
+				foreach ($updated as $externalEntity) {
+					/** @var Tx_Extbase_Persistence_Mapper_DataMap $dataMap */
+					$dataMap = $this->objectManager->get('Tx_Palm_Persistence_Mapper_DataMapper')->getDataMap(get_class($externalEntity));
+					$fieldArray = Array(
+						'uid'	=> $externalEntity->getUid(),
+						'pid'	=> $externalEntity->getPid()
+					);
+					$hookObj->processDatamap_afterDatabaseOperations('update', $dataMap->getTableName(), $externalEntity->getUid(), $fieldArray, $parent);
 				}
 			}
 		}
