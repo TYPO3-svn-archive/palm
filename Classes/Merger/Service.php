@@ -307,7 +307,12 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 			end($matchOnParts);
 			$lastMatchOnPart = current($matchOnParts);
 			end($matchOnTypes);
-			$lastMatchOnType = current($matchOnTypes);
+			if (!empty($matchOnTypes)) {
+				$lastMatchOnType = current($matchOnTypes);
+			} else {
+				$lastMatchOnType = get_class($entity);
+			}
+			/** @var Tx_Extbase_Persistence_QueryInterface $query */
 			$query = $queryFactory->create($lastMatchOnType);
 			return (bool) $query->matching($query->like($lastMatchOnPart, $matchValue))->execute()->count();
 		}
@@ -549,6 +554,43 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 						}
 					}
 				}
+				break;
+			case Tx_Palm_Merger_RuleInterface::ACTION_LOOKUP:
+				$lookUpRepositoryName = $specificRule->getLookUpRepository();
+				if (empty($lookUpRepositoryName)) {
+					throw new InvalidArgumentException('If a lookup action is specified, a lookup repository has to be set in palm configuration at the property "' . $propertyName .'"', 1310637800);
+				}
+				/** @var Tx_Extbase_Persistence_Typo3QuerySettings $querySettings */
+				$querySettings = $this->objectManager->create('Tx_Extbase_Persistence_Typo3QuerySettings');
+				$querySettings->setRespectStoragePage(FALSE);
+				/** @var Tx_Extbase_Persistence_RepositoryInterface $lookUpRepository */
+				$lookUpRepository = $this->objectManager->get($lookUpRepositoryName);
+				$lookUpRepository->setDefaultQuerySettings($querySettings);
+				$lookUpProperty = $specificRule->getMatchOn();
+				$lookUpMethod = 'findOneBy' . ucfirst($lookUpProperty);
+				$externalValue = Tx_Extbase_Reflection_ObjectAccess::getProperty($externalEntity, $propertyName);
+				if ($scope === self::GETTER_SCOPE_COLLECTION) {
+					$newInternalValue = new Tx_Extbase_Persistence_ObjectStorage();
+					foreach ($externalValue as $externalChild) {
+						$externalChildValue = Tx_Extbase_Reflection_ObjectAccess::getProperty($externalChild, $lookUpProperty);
+						$internalChild = $lookUpRepository->$lookUpMethod($externalChildValue);
+						if ($internalChild !== NULL) {
+							$newInternalValue->attach($internalChild);
+						}
+					}
+					if ($newInternalValue->count() > 0) {
+						Tx_Extbase_Reflection_ObjectAccess::setProperty($internalEntity, $propertyName, $newInternalValue);
+					}
+				} else {
+					$externalChildValue = Tx_Extbase_Reflection_ObjectAccess::getProperty($externalValue, $lookUpProperty);
+					$internalChild = $lookUpRepository->$lookUpMethod($externalChildValue);
+					if ($internalChild !== NULL) {
+						Tx_Extbase_Reflection_ObjectAccess::setProperty($internalEntity, $propertyName, $internalChild);
+					}
+				}
+				break;
+			default:
+				throw new InvalidArgumentException('The given action is not one of the ones defined in Tx_Palm_Merger_RuleInterface::ACTION_* .', 1310637155);
 				break;
 		}
 	}

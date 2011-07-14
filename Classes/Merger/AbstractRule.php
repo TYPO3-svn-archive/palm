@@ -13,6 +13,11 @@ abstract class Tx_Palm_Merger_AbstractRule implements Tx_Palm_Merger_RuleInterfa
 	protected $workOn;
 
 	/**
+	 * @var string
+	 */
+	protected $lookUpRepository;
+
+	/**
 	 * @var int
 	 */
 	protected $onExternalPropertyEmpty;
@@ -112,6 +117,24 @@ abstract class Tx_Palm_Merger_AbstractRule implements Tx_Palm_Merger_RuleInterfa
 	 */
 	public function getWorkOn() {
 		return $this->workOn;
+	}
+
+	/**
+	 * Sets lookUpRepository
+	 *
+	 * @param string $lookUpRepository
+	 */
+	public function setLookUpRepository($lookUpRepository) {
+		$this->lookUpRepository = $lookUpRepository;
+	}
+
+	/**
+	 * Returns lookUpRepository
+	 *
+	 * @return string
+	 */
+	public function getLookUpRepository() {
+		return $this->lookUpRepository;
 	}
 
 

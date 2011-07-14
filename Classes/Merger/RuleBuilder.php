@@ -77,6 +77,7 @@ class Tx_Palm_Merger_RuleBuilder implements t3lib_Singleton {
 		}
 		$ruleSet = Array(
 			'matchOn'					=> $ruleDirective[Tx_Palm_Merger_RuleInterface::MATCH_ON],
+			'lookUpRepository'			=> $ruleDirective[Tx_Palm_Merger_RuleInterface::LOOKUP_REPOSITORY],
 			'onExternalPropertyEmpty'	=> $ruleDirective[Tx_Palm_Merger_RuleInterface::ON_EXTERNAL_PROPERTY_EMPTY],
 			'onInternalPropertyEmpty'	=> $ruleDirective[Tx_Palm_Merger_RuleInterface::ON_INTERNAL_PROPERTY_EMPTY],
 			'onBothPropertyNotEmpty'	=> $ruleDirective[Tx_Palm_Merger_RuleInterface::ON_BOTH_PROPERTY_NOT_EMPTY],
