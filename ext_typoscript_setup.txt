@@ -1,3 +1,14 @@
+config.tx_extbase {
+	objects {
+		Tx_Extbase_Reflection_Service {
+			className = Tx_Palm_Reflection_Service
+		}
+		Tx_Extbase_Persistence_Mapper_DataMapper {
+			className = Tx_Palm_Persistence_Mapper_DataMapper
+		}
+	}
+}
+
 palm = PAGE
 palm {
 	typeNum = 887776
