@@ -288,6 +288,8 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 		if(count($edit) == 1) {
 			$tableName = key($edit);
 			$recordIdentifier = key(current($edit));
+			$record = t3lib_BEfunc::getRecord($tableName, $recordIdentifier, 'pid');
+			$pid = $record['pid'];
 			$configuration = $this->configurationManager->getConfiguration(Tx_Extbase_Configuration_ConfigurationManagerInterface::CONFIGURATION_TYPE_FRAMEWORK);
 			$classMapping = $configuration['persistence']['classes'];
 			if ($classMapping && !empty($classMapping)) {
@@ -311,6 +313,7 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 				$entity = str_replace(' ', '_', ucwords(str_replace('_', ' ', $tableName)));
 			}
 			if($entity && $recordIdentifier) {
+				$this->request->setArgument('pid', (int) $pid);
 				$this->request->setArgument('entityNames', array_keys($potentialEntities));
 				$this->request->setArgument('recordIdentifier', $recordIdentifier);
 			}
@@ -320,15 +323,16 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 	/**
 	 * Enter description here ...
 	 *
+	 * @param int $pid
 	 * @param array $entityNames
 	 * @param int $recordIdentifier
 	 * @return void|string
 	 */
-	public function testRecordAction($entityNames = array(), $recordIdentifier = null) {
+	public function testRecordAction($pid, $entityNames = array(), $recordIdentifier = null) {
 		if(empty($entityNames) || !$recordIdentifier) return '';
 		foreach ($entityNames as $entityName) {
 			$rules = $this->mergerService->getPullRulesByEntityName($entityName);
-			$this->uriBuilder->setArguments(array('M' => 'web_PalmTxPalmM1'));
+			$this->uriBuilder->setArguments(array('M' => 'web_PalmTxPalmM1', 'id' => $pid));
 			foreach($rules as $fileLocation => $rule) {
 				$repository = $this->mergerService->getRepositoryByRule($rule);
 				$entity = $repository->findByUid($recordIdentifier);
