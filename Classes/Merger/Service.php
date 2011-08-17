@@ -288,33 +288,35 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 			if ($matchValue instanceof Tx_Extbase_DomainObject_DomainObjectInterface) {
 				throw new InvalidArgumentException('The given entity has a non scalar match value at the given match path "' . $rule->getMatchOn() . '"', 1303384930);
 			}
-			$matchOnParts = t3lib_div::trimExplode('.', $rule->getMatchOn());
-			$matchOnTypes = array();
 			/** @var Tx_Extbase_Persistence_QueryFactoryInterface $queryFactory  */
 			$queryFactory = $this->objectManager->get('Tx_Extbase_Persistence_QueryFactoryInterface');
-			if (!empty($matchOnParts)) {
-				$classSchema = $this->reflectionService->getClassSchema($entity);
-				foreach ($matchOnParts as $propertyName) {
-					$propertyMeta = $classSchema->getProperty($propertyName);
-					if (!Tx_Palm_Utility_TypeHandling::isAtomicType($propertyMeta['type'])) {
-						$matchOnTypes[] = $propertyMeta['type'];
-						$classSchema = $this->reflectionService->getClassSchema($propertyMeta['type']);
-					} else {
-						break;
+			if (!strpos($rule->getMatchOn(), '.')) {
+				$lastMatchOnPart = $rule->getMatchOn();
+				$query = $queryFactory->create($rule->getEntityName());
+				return (bool) $query->matching($query->like($lastMatchOnPart, $matchValue))->execute()->count();
+			} else {
+				$matchOnParts = t3lib_div::trimExplode('.', $rule->getMatchOn());
+				$matchOnTypes = array();
+				if (!empty($matchOnParts)) {
+					$classSchema = $this->reflectionService->getClassSchema($entity);
+					foreach ($matchOnParts as $propertyName) {
+						$propertyMeta = $classSchema->getProperty($propertyName);
+						if (!Tx_Palm_Utility_TypeHandling::isAtomicType($propertyMeta['type'])) {
+							$matchOnTypes[] = $propertyMeta['type'];
+							$classSchema = $this->reflectionService->getClassSchema($propertyMeta['type']);
+						} else {
+							break;
+						}
 					}
 				}
-			}
-			end($matchOnParts);
-			$lastMatchOnPart = current($matchOnParts);
-			end($matchOnTypes);
-			if (!empty($matchOnTypes)) {
+				end($matchOnParts);
+				$lastMatchOnPart = current($matchOnParts);
+				end($matchOnTypes);
 				$lastMatchOnType = current($matchOnTypes);
-			} else {
-				$lastMatchOnType = get_class($entity);
+
+				$query = $queryFactory->create($lastMatchOnType);
+				return (bool) $query->matching($query->like($lastMatchOnPart, $matchValue))->execute()->count();
 			}
-			/** @var Tx_Extbase_Persistence_QueryInterface $query */
-			$query = $queryFactory->create($lastMatchOnType);
-			return (bool) $query->matching($query->like($lastMatchOnPart, $matchValue))->execute()->count();
 		}
 	}
 

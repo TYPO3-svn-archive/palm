@@ -262,6 +262,9 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 			if (!isset($GLOBALS['TSFE']->tmpl)) {
 				$GLOBALS['TSFE']->tmpl = t3lib_div::makeInstance('t3lib_TStemplate');
 			}
+			if (!isset($GLOBALS['TSFE']->sys_page)) {
+				$GLOBALS['TSFE']->sys_page = t3lib_div::makeInstance('t3lib_pageSelect');
+			}
 			if (!isset($GLOBALS['TT'])) {
 				$GLOBALS['TT'] = t3lib_div::makeInstance('t3lib_TimeTrackNull');
 			}
@@ -327,6 +330,8 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 		$target = $this->objectManager->create($className);
 		$validator = $this->validatorResolver->createValidator('GenericObject');
 		$this->propertyMapper->mapAndValidate(array_keys($source), $source, $target, array_keys($classSchema->getProperties()), $validator);
+//var_dump($target->getDestinations());
+//die();
 		return $target;
 	}
 
