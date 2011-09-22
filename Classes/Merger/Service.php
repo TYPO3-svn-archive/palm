@@ -517,17 +517,18 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 						}
 						// Join internal entities on matchons
 						foreach($internalProperty as $entity) {
-							$referenceValue = '';
+							$referenceValue = array();
 							foreach($matchOns as $matchOn) {
-								$reference = Tx_Extbase_Reflection_ObjectAccess::getPropertyPath($entity, $matchOn);
+								$reference = Tx_Palm_Reflection_ObjectAccess::getPropertyPath($entity, $matchOn);
 								if (is_object($reference) && $reference instanceof DateTime) {
-									$referenceValue .= $reference->format("o-m-d\TH:i:s\Z");
+									$referenceValue[] = $reference->format("o-m-d\TH:i:s\Z");
 								} elseif(is_object($reference)) {
 									// TODO Throw exception
 								} else {
-									$referenceValue .= $reference;
+									$referenceValue[] = $reference;
 								}
 							}
+							$referenceValue = implode('$%$', $referenceValue);
 							if($referenceValue) {
 								if(is_array($entityReference[$referenceValue])) {
 									$entityReference[$referenceValue]['internal'] = $entity;
