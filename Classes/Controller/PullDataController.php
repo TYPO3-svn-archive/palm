@@ -252,7 +252,7 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 		$updated = Array();
 		foreach($repository->findAll() as $entity) {
 			if ($this->mergerService->isRuleApplicableOnEntity($rule, $entity)) {
-				set_time_limit(90);
+				set_time_limit(120);
 				$this->mergerService->mergeByRule($entity, $rule);
 				$repository->update($entity);
 				$updated[] = $entity;
