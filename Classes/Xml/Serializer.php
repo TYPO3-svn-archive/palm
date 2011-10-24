@@ -330,8 +330,6 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 		$target = $this->objectManager->create($className);
 		$validator = $this->validatorResolver->createValidator('GenericObject');
 		$this->propertyMapper->mapAndValidate(array_keys($source), $source, $target, array_keys($classSchema->getProperties()), $validator);
-//var_dump($target->getDestinations());
-//die();
 		return $target;
 	}
 
