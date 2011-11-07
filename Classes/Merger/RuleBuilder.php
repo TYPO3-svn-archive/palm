@@ -88,7 +88,7 @@ class Tx_Palm_Merger_RuleBuilder implements t3lib_Singleton {
 			'onInternalCollectionEmpty'	=> $ruleDirective[Tx_Palm_Merger_RuleInterface::ON_INTERNAL_COLLECTION_EMPTY],
 			'onBothCollectionNotEmpty'	=> $ruleDirective[Tx_Palm_Merger_RuleInterface::ON_BOTH_COLLECTION_NOT_EMPTY],
 		);
-		$ruleSet = Tx_Extbase_Utility_Arrays::arrayFilterRecursive($ruleSet);
+		$ruleSet = Tx_Palm_Utility_Arrays::arrayFilterRecursive($ruleSet);
 		$ruleSet = t3lib_div::array_merge_recursive_overrule($parentRuleSet, $ruleSet);
 		foreach ($ruleSet as $propertyName=>$property) {
 			Tx_Extbase_Reflection_ObjectAccess::setProperty($rule, $propertyName, $property);
