@@ -31,6 +31,11 @@
 class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_ActionController {
 
 	/**
+	 * @var integer
+	 */
+	protected $pid = 0;
+
+	/**
 	 * Contains hookObjectsArr
 	 *
 	 * @var array
@@ -60,6 +65,9 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 			foreach ($TYPO3_CONF_VARS['SC_OPTIONS']['t3lib/class.t3lib_tcemain.php']['processDatamapClass'] as $classRef) {
 				$this->hookObjectsArr[] = t3lib_div::getUserObj($classRef);
 			}
+		}
+		if (t3lib_div::_GP('id')) {
+			$this->pid = (int) t3lib_div::_GP('id');
 		}
 	}
 
@@ -97,7 +105,11 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 	 */
 	public function selectRecordAction($fileLocation, $currentPage = 1) {
 		$rule = $this->mergerService->getPullRuleByFileLocation($fileLocation);
+		/** @var Tx_Extbase_Persistence_Typo3QuerySettings $querySettings */
+		$querySettings = $this->objectManager->create('Tx_Extbase_Persistence_Typo3QuerySettings');
+		$querySettings->setStoragePageIds(array($this->pid));
 		$repository = $this->mergerService->getRepositoryByRule($rule);
+		$repository->setDefaultQuerySettings($querySettings);
 		$repository->setDefaultOrderings(Array(
 			'uid' => Tx_Extbase_Persistence_QueryInterface::ORDER_ASCENDING,
 		));
@@ -135,7 +147,11 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 			$record,
 			$rule->getSinglePathInCollection()
 		);
+		/** @var Tx_Extbase_Persistence_Typo3QuerySettings $querySettings */
+		$querySettings = $this->objectManager->create('Tx_Extbase_Persistence_Typo3QuerySettings');
+		$querySettings->setStoragePageIds(array($this->pid));
 		$repository = $this->mergerService->getRepositoryByRule($rule);
+		$repository->setDefaultQuerySettings($querySettings);
 		$externalEntity = $this->mergerService->getExternalEntityByExternalPath(
 			$this->mergerService->getDOMByRule($rule),
 			$resolvedPath,
@@ -172,7 +188,11 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 		$container->registerImplementation('Tx_Extbase_Persistence_Typo3QuerySettings', 'Tx_Palm_Persistence_MergerQuerySettings');
 		$this->objectManager->get('Tx_Palm_Persistence_Mapper_DataMapper')->setEnableLazyLoading(false);
 		$rule = $this->mergerService->getPullRuleByFileLocation($fileLocation);
+		/** @var Tx_Extbase_Persistence_Typo3QuerySettings $querySettings */
+		$querySettings = $this->objectManager->create('Tx_Extbase_Persistence_Typo3QuerySettings');
+		$querySettings->setStoragePageIds(array($this->pid));
 		$repository = $this->mergerService->getRepositoryByRule($rule);
+		$repository->setDefaultQuerySettings($querySettings);
 		$xmlRepository = $this->mergerService->getXmlRepositoryByRule($rule);
 		$added = Array();
 		foreach($xmlRepository->findAll() as $entity) {
@@ -217,7 +237,11 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 		$container->registerImplementation('Tx_Extbase_Persistence_Typo3QuerySettings', 'Tx_Palm_Persistence_MergerQuerySettings');
 		$this->objectManager->get('Tx_Palm_Persistence_Mapper_DataMapper')->setEnableLazyLoading(false);
 		$rule = $this->mergerService->getPullRuleByFileLocation($fileLocation);
+		/** @var Tx_Extbase_Persistence_Typo3QuerySettings $querySettings */
+		$querySettings = $this->objectManager->create('Tx_Extbase_Persistence_Typo3QuerySettings');
+		$querySettings->setStoragePageIds(array($this->pid));
 		$repository = $this->mergerService->getRepositoryByRule($rule);
+		$repository->setDefaultQuerySettings($querySettings);
 		$entity = $repository->findByUid($record);
 		$this->mergerService->mergeByRule($entity, $rule);
 		$repository->update($entity);
@@ -248,7 +272,11 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 		$container->registerImplementation('Tx_Extbase_Persistence_Typo3QuerySettings', 'Tx_Palm_Persistence_MergerQuerySettings');
 		$this->objectManager->get('Tx_Palm_Persistence_Mapper_DataMapper')->setEnableLazyLoading(false);
 		$rule = $this->mergerService->getPullRuleByFileLocation($fileLocation);
+		/** @var Tx_Extbase_Persistence_Typo3QuerySettings $querySettings */
+		$querySettings = $this->objectManager->create('Tx_Extbase_Persistence_Typo3QuerySettings');
+		$querySettings->setStoragePageIds(array($this->pid));
 		$repository = $this->mergerService->getRepositoryByRule($rule);
+		$repository->setDefaultQuerySettings($querySettings);
 		$updated = Array();
 		foreach($repository->findAll() as $entity) {
 			if ($this->mergerService->isRuleApplicableOnEntity($rule, $entity)) {

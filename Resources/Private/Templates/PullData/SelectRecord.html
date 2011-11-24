@@ -21,7 +21,7 @@
 						<f:link.action action="mergeRecord" arguments="{fileLocation:rule.fileLocation, record:item}"><p:be.entityLabel entity="{item}" /></f:link.action>
 					</td>
 					<td><p:be.propertyByPath entity="{item}" propertyPath="{propertyPath}" /></td>
-					<td><f:be.buttons.icon uri="{f:uri.action(action:'mergeRecord', arguments:{fileLocation:rule.fileLocation, record:item}" icon="icon_ok" /></td>
+					<td><f:be.buttons.icon uri="{f:uri.action(action:'mergeRecord', arguments:{fileLocation:rule.fileLocation, record:item})}" icon="icon_ok" /></td>
 				</f:then>
 				<f:else>
 					<td><p:be.entityLabel entity="{item}" /></td>
