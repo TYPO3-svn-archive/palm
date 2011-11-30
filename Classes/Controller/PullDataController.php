@@ -301,8 +301,6 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 				}
 			}
 		}
-		print(count($updated));
-		print(PHP_EOL);
 		$this->objectManager->get('Tx_Extbase_Persistence_Manager')->persistAll();
 		$parent = t3lib_div::makeInstance('t3lib_TCEmain');
 		foreach ($this->hookObjectsArr as $hookObj) {
