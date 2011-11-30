@@ -33,7 +33,7 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 	/**
 	 * @var integer
 	 */
-	protected $pid = 0;
+	protected $pid;
 
 	/**
 	 * Contains hookObjectsArr
@@ -57,27 +57,37 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 	}
 
 	/**
+	 * Constructor method for a pull data controller
+	 *
+	 * @param int $pid
+	 */
+	public function __construct($pid = NULL) {
+		$this->pid = $pid;
+	}
+
+	/**
 	 * @return void
 	 */
 	public function initializeAction() {
+		$this->pid = ($this->pid === NULL) ? $this->getCurrentPid() : $this->pid;
 		global $TYPO3_CONF_VARS;
 		if (is_array($TYPO3_CONF_VARS['SC_OPTIONS']['t3lib/class.t3lib_tcemain.php']['processDatamapClass'])) {
 			foreach ($TYPO3_CONF_VARS['SC_OPTIONS']['t3lib/class.t3lib_tcemain.php']['processDatamapClass'] as $classRef) {
 				$this->hookObjectsArr[] = t3lib_div::getUserObj($classRef);
 			}
 		}
-		if (t3lib_div::_GP('id')) {
-			$this->pid = (int) t3lib_div::_GP('id');
-		}
 	}
 
+	/**
+	 * @return void
+	 */
 	public function indexAction() {
 		$pullableEntities = $this->mergerService->getPullableEntities();
 		$entityTable = array();
 		foreach($pullableEntities as $entityName=>$directiveCount) {
 			$entityTable[] = array($entityName, $directiveCount);
 		}
-		$this->view->assign('pid', $this->getCurrentPid());
+		$this->view->assign('pid', $this->pid);
 		$this->view->assign('entities', $entityTable);
 	}
 
@@ -92,7 +102,7 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 		foreach ($rules as $fileLocation=>$rule) {
 			$rulesTable[] = array($fileLocation, $rule->getSinglePathInCollection());
 		}
-		$this->view->assign('pid', $this->getCurrentPid());
+		$this->view->assign('pid', $this->pid);
 		$this->view->assign('entityName', $entityName);
 		$this->view->assign('rules', $rulesTable);
 	}
@@ -289,6 +299,8 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 				}
 			}
 		}
+		print(count($updated));
+		print(PHP_EOL);
 		$this->objectManager->get('Tx_Extbase_Persistence_Manager')->persistAll();
 		$parent = t3lib_div::makeInstance('t3lib_TCEmain');
 		foreach ($this->hookObjectsArr as $hookObj) {
@@ -390,4 +402,3 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 	}
 
 }
-?>

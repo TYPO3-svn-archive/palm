@@ -26,5 +26,5 @@ class tx_Palm_Hook_TCEForms {
 //			t3lib_FlashMessageQueue::addMessage(t3lib_div::makeInstance('t3lib_FlashMessage', 'There is some Data to Import. <a href="#">Click here to start the Import</a>', 'Importer', t3lib_FlashMessage::INFO));
 		}
 	}
+
 }
-?>

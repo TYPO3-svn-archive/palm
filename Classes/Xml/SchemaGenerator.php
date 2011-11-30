@@ -343,5 +343,3 @@ class Tx_Palm_Xml_SchemaGenerator implements t3lib_Singleton {
 
 
 }
-
-?>

@@ -63,5 +63,3 @@ foreach($GLOBALS['TSFE']->additionalHeaderData as $header) {
 }
 
 print($content);
-
-?>

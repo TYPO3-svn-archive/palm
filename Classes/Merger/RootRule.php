@@ -139,5 +139,3 @@ class Tx_Palm_Merger_RootRule extends Tx_Palm_Merger_AbstractRule {
 	}
 
 }
-
-?>

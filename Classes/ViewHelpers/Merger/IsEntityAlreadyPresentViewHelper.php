@@ -44,7 +44,5 @@ class Tx_Palm_ViewHelpers_Merger_IsEntityAlreadyPresentViewHelper extends Tx_Flu
 	public function render(Tx_Palm_Merger_RootRule $rule, Tx_Extbase_DomainObject_AbstractDomainObject $item) {
 		return (bool) $this->mergerService->isEntityAlreadyPresent($rule, $item);
 	}
+
 }
-
-
-?>

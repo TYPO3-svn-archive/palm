@@ -29,6 +29,5 @@
  * @license http://www.gnu.org/licenses/lgpl.html GNU Lesser General Public License, version 3 or later
  */
 class Tx_Palm_Reflection_Exception_InvalidXmlNodeType extends Tx_Extbase_Reflection_Exception {
-}
 
-?>
+}

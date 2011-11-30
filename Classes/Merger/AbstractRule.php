@@ -380,4 +380,3 @@ abstract class Tx_Palm_Merger_AbstractRule implements Tx_Palm_Merger_RuleInterfa
 
 
 }
-?>

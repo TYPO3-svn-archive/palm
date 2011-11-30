@@ -79,6 +79,5 @@ class Tx_Palm_ViewHelpers_Be_Table_ColumnViewHelper extends Tx_Fluid_Core_ViewHe
 		}
 		return $tableData;
 	}
-}
 
-?>
+}

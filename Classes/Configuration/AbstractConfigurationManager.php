@@ -175,4 +175,3 @@ abstract class Tx_Palm_Configuration_AbstractConfigurationManager implements t3l
 	abstract protected function getPluginConfiguration($extensionName, $pluginName);
 
 }
-?>

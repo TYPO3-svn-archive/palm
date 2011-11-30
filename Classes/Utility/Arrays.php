@@ -52,4 +52,3 @@ class Tx_Palm_Utility_Arrays {
 	}
 
 }
-?>

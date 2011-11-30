@@ -1,4 +1,4 @@
- <?php
+<?php
 /***************************************************************
  *  Copyright notice
  *
@@ -31,34 +31,46 @@
  * @entity
  * @api
  */
-class Tx_Palm_ViewHelpers_SerializeViewHelper extends Tx_Fluid_Core_ViewHelper_AbstractViewHelper {
+class tx_Palm_Scheduler_MergeTask  extends tx_Palm_Scheduler_AbstractTask {
 
 	/**
-	 * @var Tx_Palm_Xml_Serializer
+	 * Contains action
+	 *
+	 * @var string
 	 */
-	protected $xmlSerializer;
+	protected $action = 'mergeAllRecords';
 
 	/**
-	 * @param Tx_Palm_Xml_Serializer $xmlSerializer
-	 * @return void
+	 * Contains fileName
+	 *
+	 * @var string
 	 */
-	public function injectXmlSerializer(Tx_Palm_Xml_Serializer $xmlSerializer) {
-		$this->xmlSerializer = $xmlSerializer;
+	protected $fileName;
+
+	/**
+	 * Sets $fileName
+	 *
+	 * @param string $fileName
+	 */
+	public function setFileName($fileName) {
+		$this->fileName = $fileName;
 	}
 
 	/**
-	 * @param mixed $target
-	 * @return void
+	 * Returns $fileName
+	 *
+	 * @return string
 	 */
-	public function render($target) {
-		$document = $this->xmlSerializer->serialize($target);
-		if ($document) {
-			$result = '';
-			foreach ($document->childNodes as $childNode) {
-				$result .= $document->saveXML($childNode);
-			}
-			return $result;
-		}
+	public function getFileName() {
+		return $this->fileName;
+	}
+
+	protected function prepareGetArguments() {
+		$_GET['id'] = $this->pid;
+		$_GET['tx_' . $this->extensionName . '_' . $this->pluginName] = array(
+			'action' => $this->action,
+			'fileLocation' => $this->fileName,
+		);
 	}
 
 }

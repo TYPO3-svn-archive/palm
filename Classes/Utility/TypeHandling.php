@@ -47,4 +47,3 @@ class Tx_Palm_Utility_TypeHandling extends Tx_Extbase_Utility_TypeHandling {
 	}
 
 }
-?>

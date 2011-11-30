@@ -20,5 +20,3 @@ interface Tx_Palm_Merger_RuleInterface {
 	const ACTION_LOOKUP					= 5;
 
 }
-
-?>

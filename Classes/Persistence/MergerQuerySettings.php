@@ -62,4 +62,3 @@ class Tx_Palm_Persistence_MergerQuerySettings extends Tx_Extbase_Persistence_Typ
 		$this->applicableRule = $applicableRule;
 	}
 }
-?>

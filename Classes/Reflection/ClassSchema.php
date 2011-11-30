@@ -31,12 +31,14 @@
  * @version $Id$
  * @license http://www.gnu.org/licenses/lgpl.html GNU Lesser General Public License, version 3 or later
  */
-class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
+class Tx_Palm_Reflection_ClassSchema {
 
 	/**
-	 * @var bool
+	 * Properties of the class which need to be persisted
+	 *
+	 * @var array
 	 */
-	protected $ignoreUnmappedProperties = false;
+	protected $properties = array();
 
 	/**
 	 * Value of the Xml Root Name
@@ -81,25 +83,24 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	protected $xmlRawValues = Array();
 
 	/**
-	 * Adds (defines) a specific property and its type.
+	 * Constructs this class schema
 	 *
-	 * @param string $name Name of the property
-	 * @param string $type Type of the property
-	 * @param boolean $lazy Whether the property should be lazy-loaded when reconstituting
-	 * @param string $cascade Strategy to cascade the object graph.
-	 * @return void
+	 * @param string $className Name of the class this schema is referring to
+	 * @author Robert Lemke <robert@typo3.org>
 	 */
-	public function addProperty($name, $type, $lazy = FALSE, $cascade = '', $xml = array()) {
-		$type = Tx_Extbase_Utility_TypeHandling::parseType($type);
-		$this->properties[$name] = array(
-			'type' => $type['type'],
-			'elementType' => $type['elementType'],
-			'lazy' => $lazy,
-			'cascade' => $cascade,
-			'xml' => $xml,
-		);
+	public function __construct($className) {
+		$this->className = $className;
 	}
 
+	/**
+	 * Returns the class name this schema is referring to
+	 *
+	 * @return string The class name
+	 * @author Robert Lemke <robert@typo3.org>
+	 */
+	public function getClassName() {
+		return $this->className;
+	}
 
 	/**
 	 * Adds (defines) a specific xml element wrapper.
@@ -109,13 +110,13 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	 * @return void
 	 */
 	public function addXmlElementWrapper($name, $propertyName) {
-		if(array_key_exists($name, $this->xmlElements)) {
-			$definedElement = $this->xmlElementWrappers[$name];
-			throw new Tx_Palm_Reflection_Exception_DuplicateXmlElementWrapper('The xml element wrapper "' . $name .'" defined at ' . $this->className . '::' . $propertyName . ' is already defined at ' . $this->className . '::' . $definedElement['propertyName'], 1290779975);
-		}
-		$this->xmlElementWrappers[$name] = array(
+		$this->checkDuplication($propertyName, NULL, $name);
+		$this->xmlElements[$name] = array(
+			'isWrapper'		=> true,
 			'propertyName'	=> $propertyName,
 		);
+		if (!isset($this->properties[$propertyName])) $this->properties[$propertyName] = array();
+		$this->properties[$propertyName]['wrapperName'] = $name;
 	}
 
 
@@ -129,15 +130,17 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	 * @return void
 	 */
 	public function addXmlElement($name, $type, $propertyName, $description=null) {
-		if(array_key_exists($name, $this->xmlElements)) {
-			$definedElement = $this->xmlElements[$name];
-			throw new Tx_Palm_Reflection_Exception_DuplicateXmlElement('The xml element "' . $name .'" defined at ' . $this->className . '::' . $propertyName . ' is already defined at ' . $this->className . '::' . $definedElement['propertyName'], 1289410457);
-		}
-		$type = Tx_Extbase_Utility_TypeHandling::normalizeType($type);
+		$this->checkDuplication($propertyName, $type, $name);
 		$this->xmlElements[$name] = array(
 			'propertyName'	=> $propertyName,
 			'type'			=> $type,
 			'description'	=> $description,
+		);
+		if (!isset($this->properties[$propertyName])) $this->properties[$propertyName] = Array();
+		if (!isset($this->properties[$propertyName][$type])) $this->properties[$propertyName][$type] = Array();
+		$this->properties[$propertyName][$type] =  Array(
+			'elementName'	=> $name,
+			'description'	=> $description
 		);
 	}
 
@@ -152,15 +155,17 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	 * @return void
 	 */
 	public function addXmlAttribute($name, $type, $propertyName, $description=null) {
-		if(array_key_exists($name, $this->xmlAttributes)) {
-			$definedElement = $this->xmlAttributes[$name];
-			throw new Tx_Palm_Reflection_Exception_DuplicateXmlAttribute('The xml attribute "' . $name .'" defined at ' . $this->className . '::' . $propertyName . ' is already defined at ' . $this->className . '::' . $definedElement['propertyName'], 1289410831);
-		}
-		$type = Tx_Extbase_Utility_TypeHandling::normalizeType($type);
+		$this->checkDuplication($propertyName, $type, $name);
 		$this->xmlAttributes[$name] = array(
 			'propertyName'	=> $propertyName,
 			'type'			=> $type,
 			'description'	=> $description,
+		);
+		if (!isset($this->properties[$propertyName])) $this->properties[$propertyName] = Array();
+		if (!isset($this->properties[$propertyName][$type])) $this->properties[$propertyName][$type] = Array();
+		$this->properties[$propertyName][$type] =  Array(
+			'attributeName'	=> $name,
+			'description'	=> $description
 		);
 	}
 
@@ -174,14 +179,16 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	 * @return void
 	 */
 	public function addXmlValue($valueType, $propertyName, $description=null) {
-		if(!empty($this->xmlValues) && isset($this->xmlValues[$valueType])) {
-			$definedElement = $this->xmlValues[$valueType];
-			throw new Tx_Palm_Reflection_Exception_DuplicateXmlValueType('The xml value type "' . $valueType .'" defined at ' . $this->className . '::' . $propertyName . ' is already defined at ' . $this->className . '::' . $definedElement['propertyName'], 1289410839);
-		}
-		$valueType = Tx_Extbase_Utility_TypeHandling::normalizeType($valueType);
+		$this->checkDuplication($propertyName, $valueType);
 		$this->xmlValues[$valueType] = array(
 			'propertyName'	=> $propertyName,
 			'description'	=> $description,
+		);
+		if (!isset($this->properties[$propertyName])) $this->properties[$propertyName] = Array();
+		if (!isset($this->properties[$propertyName][$valueType])) $this->properties[$propertyName][$valueType] = Array();
+		$this->properties[$propertyName][$valueType] =  Array(
+			'isValue'		=> true,
+			'description'	=> $description
 		);
 	}
 
@@ -194,35 +201,18 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	 * @return void
 	 */
 	public function addXmlRawValue($valueType, $propertyName, $description=null) {
-		if(!empty($this->xmlRawValues) && isset($this->xmlRawValues[$valueType])) {
-			$definedElement = $this->xmlRawValues[$valueType];
-			throw new Tx_Palm_Reflection_Exception_DuplicateXmlRawValueType('The xml raw value type "' . $valueType .'" defined at ' . $this->className . '::' . $propertyName . ' is already defined at ' . $this->className . '::' . $definedElement['propertyName'], 1302538814);
-		}
-		$valueType = Tx_Extbase_Utility_TypeHandling::normalizeType($valueType);
+		$this->checkDuplication($propertyName, $valueType);
 		$this->xmlRawValues[$valueType] = array(
 			'propertyName'	=> $propertyName,
 			'description'	=> $description,
 		);
+		if (!isset($this->properties[$propertyName])) $this->properties[$propertyName] = Array();
+		if (!isset($this->properties[$propertyName][$valueType])) $this->properties[$propertyName][$valueType] = Array();
+		$this->properties[$propertyName][$valueType] =  Array(
+			'isRawValue'		=> true,
+			'description'	=> $description
+		);
 	}
-
-	/**
-	 * Sets $ignoreUnmappedProperties
-	 *
-	 * @param bool $ignoreUnmappedProperties
-	 */
-	public function setIgnoreUnmappedProperties($ignoreUnmappedProperties) {
-		$this->ignoreUnmappedProperties = (bool) $ignoreUnmappedProperties;
-	}
-
-	/**
-	 * Returns $ignoreUnmappedProperties
-	 *
-	 * @return bool
-	 */
-	public function getIgnoreUnmappedProperties() {
-		return $this->ignoreUnmappedProperties;
-	}
-
 
 	/**
 	 * Sets xmlRootName
@@ -238,7 +228,6 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 		);
 	}
 
-
 	/**
 	 * Returns xmlRootName
 	 *
@@ -247,7 +236,6 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	public function getXmlRootName() {
 		return $this->xmlRoot['name'];
 	}
-
 
 	/**
 	 * Returns xmlRootName
@@ -258,7 +246,6 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 		return $this->xmlRoot['description'];
 	}
 
-
 	/**
 	 * Check if this class is xml root
 	 *
@@ -268,7 +255,31 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 		return !empty($this->xmlRoot);
 	}
 
+	/**
+	 * If the class schema has a certain property.
+	 * @param string $propertyName Name of the property
+	 * @return boolean
+	 */
+	public function hasProperty($propertyName) {
+		return array_key_exists($propertyName, $this->properties);
+	}
 
+	/**
+	 * Returns the given property defined in this schema. Check with
+	 * hasProperty($propertyName) before!
+	 * @return array
+	 */
+	public function getProperty($propertyName) {
+		return is_array($this->properties[$propertyName]) ? $this->properties[$propertyName] : array();
+	}
+
+	/**
+	 * Returns all properties defined in this schema
+	 * @return array
+	 */
+	public function getProperties() {
+		return $this->properties;
+	}
 
 	/**
 	 * Returns the property names
@@ -278,7 +289,6 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 		return array_keys($this->properties);
 	}
 
-
 	/**
 	 * Returns the xml element names
 	 * @return array
@@ -287,7 +297,6 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 		return array_keys($this->xmlElements);
 	}
 
-
 	/**
 	 * Returns the xml attribute names
 	 * @return array
@@ -295,7 +304,6 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	public function getXmlAttributeNames() {
 		return array_keys($this->xmlAttributes);
 	}
-
 
 	/**
 	 * Returns the xml value types
@@ -313,7 +321,6 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 		return array_keys($this->xmlRawValues);
 	}
 
-
 	/**
 	 * Returns the xml element names for a specific property
 	 * @param string $propertyName
@@ -321,8 +328,8 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	 */
 	public function getXmlElementNamesForProperty($propertyName) {
 		$xmlElementNames = Array();
-		if(isset($this->properties[$propertyName]['xml'])) {
-			foreach($this->properties[$propertyName]['xml'] as $binding) {
+		if(isset($this->properties[$propertyName])) {
+			foreach($this->properties[$propertyName] as $binding) {
 				if(isset($binding['elementName'])) {
 					$xmlElementNames[] = $binding['elementName'];
 				}
@@ -339,8 +346,8 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	 */
 	public function getXmlAttributeNamesForProperty($propertyName) {
 		$xmlAttributeNames = Array();
-		if(isset($this->properties[$propertyName]['xml'])) {
-			foreach($this->properties[$propertyName]['xml'] as $binding) {
+		if(isset($this->properties[$propertyName])) {
+			foreach($this->properties[$propertyName] as $binding) {
 				if(isset($binding['attributeName'])) {
 					$xmlAttributeNames[] = $binding['attributeName'];
 				}
@@ -357,9 +364,9 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	 */
 	public function getXmlValuesForProperty($propertyName) {
 		$xmlValues = Array();
-		if(isset($this->properties[$propertyName]['xml'])) {
-			foreach($this->properties[$propertyName]['xml'] as $valueType=>$binding) {
-				if(isset($this->properties[$propertyName]['xml'][$valueType]['isValue'])) {
+		if(isset($this->properties[$propertyName])) {
+			foreach($this->properties[$propertyName] as $valueType=>$binding) {
+				if(isset($this->properties[$propertyName][$valueType]['isValue'])) {
 					$xmlValues[] = $valueType;
 				}
 			}
@@ -374,9 +381,9 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	 */
 	public function getXmlRawValuesForProperty($propertyName) {
 		$xmlRawValues = Array();
-		if(isset($this->properties[$propertyName]['xml'])) {
-			foreach($this->properties[$propertyName]['xml'] as $valueType=>$binding) {
-				if(isset($this->properties[$propertyName]['xml'][$valueType]['isRawValue'])) {
+		if(isset($this->properties[$propertyName])) {
+			foreach($this->properties[$propertyName] as $valueType=>$binding) {
+				if(isset($this->properties[$propertyName][$valueType]['isRawValue'])) {
 					$xmlRawValues[] = $valueType;
 				}
 			}
@@ -390,7 +397,7 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	 * @return string
 	 */
 	public function getXmlWrapperForProperty($propertyName) {
-		return (isset($this->properties[$propertyName]['xml']['wrapperName'])) ? $this->properties[$propertyName]['xml']['wrapperName'] : null;
+		return (isset($this->properties[$propertyName]['wrapperName'])) ? $this->properties[$propertyName]['wrapperName'] : null;
 	}
 
 	/**
@@ -401,13 +408,13 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	 */
 	public function getXmlElementNameForProperty($propertyName, $valueType) {
 		if($this->isXmlElementForProperty($propertyName, $valueType)) {
-			return $this->properties[$propertyName]['xml'][$valueType]['elementName'];
+			return $this->properties[$propertyName][$valueType]['elementName'];
 		} else {
 			if (class_exists($valueType)) {
 				// look for descendant classes
-				foreach ($this->properties[$propertyName]['xml'] as $potentialValueType=>$config) {
+				foreach ($this->properties[$propertyName] as $potentialValueType=>$config) {
 					if (is_subclass_of($valueType, $potentialValueType) && $this->isXmlElementForProperty($propertyName, $potentialValueType)) {
-						return $this->properties[$propertyName]['xml'][$potentialValueType]['elementName'];
+						return $this->properties[$propertyName][$potentialValueType]['elementName'];
 					}
 				}
 			}
@@ -423,13 +430,13 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	 */
 	public function getXmlAttributeNameForProperty($propertyName, $valueType) {
 		if($this->isXmlAttributeForProperty($propertyName, $valueType)) {
-			return $this->properties[$propertyName]['xml'][$valueType]['attributeName'];
+			return $this->properties[$propertyName][$valueType]['attributeName'];
 		} else {
 			if (class_exists($valueType)) {
 				// look for descendant classes
-				foreach ($this->properties[$propertyName]['xml'] as $potentialValueType=>$config) {
+				foreach ($this->properties[$propertyName] as $potentialValueType=>$config) {
 					if (is_subclass_of($valueType, $potentialValueType) && $this->isXmlAttributeForProperty($propertyName, $potentialValueType)) {
-						$this->properties[$propertyName]['xml'][$valueType]['attributeName'];
+						$this->properties[$propertyName][$valueType]['attributeName'];
 					}
 				}
 			}
@@ -445,7 +452,7 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	public function getPropertyNameForXmlElementWrapper($xmlElementName) {
 		if(!$this->isPropertyForXmlElementWrapper($xmlElementName))
 			return null;
-		return $this->xmlElementWrappers[$xmlElementName]['propertyName'];
+		return $this->xmlElements[$xmlElementName]['propertyName'];
 	}
 
 
@@ -551,7 +558,7 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	 * @return boolean
 	 */
 	public function isXmlNameForProperty($propertyName) {
-		return array_key_exists($propertyName, $this->properties) && !empty($this->properties[$propertyName]['xml']);
+		return array_key_exists($propertyName, $this->properties) && !empty($this->properties[$propertyName]);
 	}
 
 
@@ -562,7 +569,7 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	 * @return boolean
 	 */
 	public function isXmlNameForPropertyWithValueType($propertyName, $valueType) {
-		return array_key_exists($propertyName, $this->properties) && !empty($this->properties[$propertyName]['xml']) && array_key_exists($valueType, $this->properties[$propertyName]['xml']);
+		return array_key_exists($propertyName, $this->properties) && !empty($this->properties[$propertyName]) && array_key_exists($valueType, $this->properties[$propertyName]);
 	}
 
 
@@ -575,9 +582,8 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	public function isXmlElementForProperty($propertyName, $valueType) {
 		if(!$this->isXmlNameForPropertyWithValueType($propertyName, $valueType))
 			return false;
-		return isset($this->properties[$propertyName]['xml'][$valueType]['elementName']);
+		return isset($this->properties[$propertyName][$valueType]['elementName']);
 	}
-
 
 	/**
 	 * Returns whether the given property has any xml attribute for the specific value type
@@ -588,9 +594,8 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	public function isXmlAttributeForProperty($propertyName, $valueType) {
 		if(!$this->isXmlNameForPropertyWithValueType($propertyName, $valueType))
 			return false;
-		return isset($this->properties[$propertyName]['xml'][$valueType]['attributeName']);
+		return isset($this->properties[$propertyName][$valueType]['attributeName']);
 	}
-
 
 	/**
 	 * Returns whether the given property has an xml value binding for the specific value type
@@ -601,7 +606,7 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	public function isXmlValueForProperty($propertyName, $valueType) {
 		if(!$this->isXmlNameForPropertyWithValueType($propertyName, $valueType))
 			return false;
-		return isset($this->properties[$propertyName]['xml'][$valueType]['isValue']);
+		return isset($this->properties[$propertyName][$valueType]['isValue']);
 	}
 
 	/**
@@ -613,7 +618,7 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	public function isXmlRawValueForProperty($propertyName, $valueType) {
 		if(!$this->isXmlNameForPropertyWithValueType($propertyName, $valueType))
 			return false;
-		return isset($this->properties[$propertyName]['xml'][$valueType]['isRawValue']);
+		return isset($this->properties[$propertyName][$valueType]['isRawValue']);
 	}
 
 	/**
@@ -622,9 +627,8 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	 * @return boolean
 	 */
 	public function isPropertyForXmlElementWrapper($xmlElementName) {
-		return array_key_exists($xmlElementName, $this->xmlElementWrappers);
+		return array_key_exists($xmlElementName, $this->xmlElements) && !empty($this->xmlElements[$xmlElementName]) && array_key_exists('isWrapper', $this->xmlElements[$xmlElementName]);
 	}
-
 
 	/**
 	 * Returns whether a specific xml element has a property binding
@@ -632,9 +636,8 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 	 * @return boolean
 	 */
 	public function isPropertyForXmlElement($xmlElementName) {
-		return array_key_exists($xmlElementName, $this->xmlElements);
+		return array_key_exists($xmlElementName, $this->xmlElements) && !array_key_exists('isWrapper', $this->xmlElements[$xmlElementName]);
 	}
-
 
 	/**
 	 * Returns whether a specific xml attribute has a property binding
@@ -645,6 +648,47 @@ class Tx_Palm_Reflection_ClassSchema extends Tx_Extbase_Reflection_ClassSchema {
 		return array_key_exists($xmlAttributeName, $this->xmlAttributes);
 	}
 
+	/**
+	 * @throws Tx_Palm_Reflection_Exception_DuplicateXmlAttribute|Tx_Palm_Reflection_Exception_DuplicateXmlElement|Tx_Palm_Reflection_Exception_DuplicateXmlRawValueType|Tx_Palm_Reflection_Exception_DuplicateXmlValueType
+	 * @param string $propertyName
+	 * @param string $type
+	 * @param string $name
+	 * @return void
+	 */
+	protected function checkDuplication($propertyName, $type = NULL, $name = NULL) {
+		if ($type !== NULL) {
+			if (isset($this->properties[$propertyName][$type])) {
+				$typeDefinition = $this->properties[$propertyName][$type];
+				switch ($typeDefinition) {
+					case array_key_exists('elementName', $typeDefinition);
+						throw new Tx_Palm_Reflection_Exception_DuplicateXmlElement('The xml element type"' . $type .'" defined at ' . $this->className . '::' . $propertyName . ' is already defined.', 1322482617);
+						break;
+					case array_key_exists('attributeName', $typeDefinition);
+						throw new Tx_Palm_Reflection_Exception_DuplicateXmlAttribute('The xml attribute type "' . $type .'" defined at ' . $this->className . '::' . $propertyName . ' is already defined.', 1322482618);
+						break;
+					case array_key_exists('isValue', $typeDefinition);
+						throw new Tx_Palm_Reflection_Exception_DuplicateXmlValueType('The xml value type "' . $type .'" defined at ' . $this->className . '::' . $propertyName . ' is already defined.', 1322482618);
+						break;
+					case array_key_exists('isRawValue', $typeDefinition);
+						throw new Tx_Palm_Reflection_Exception_DuplicateXmlRawValueType('The xml raw value type "' . $type .'" defined at ' . $this->className . '::' . $propertyName . ' is already defined.', 1322482620);
+						break;
+				}
+			}
+		}
+		if ($type === NULL && $name !== NULL) {
+			if($this->xmlElements[$name]) {
+				$definedElement = $this->xmlElementWrappers[$name];
+				throw new Tx_Palm_Reflection_Exception_DuplicateXmlElementWrapper('The xml element wrapper "' . $name .'" defined at ' . $this->className . '::' . $propertyName . ' is already defined at ' . $this->className . '::' . $definedElement['propertyName'], 1290779975);
+			}
+		}
+		if ($type !== NULL && $name !== NULL) {
+			if (isset($this->xmlElements[$name])) {
+				throw new Tx_Palm_Reflection_Exception_DuplicateXmlElement('The xml element name"' . $name .'" defined at ' . $this->className . '::' . $propertyName . ' is already defined at ' . $this->className . '::' . $this->xmlElements[$name]['propertyName'] . '.', 1322482716);
+			}
+			if (isset($this->xmlAttributes[$name])) {
+				throw new Tx_Palm_Reflection_Exception_DuplicateXmlAttribute('The xml attribute name "' . $name .'" defined at ' . $this->className . '::' . $propertyName . ' is already defined at ' . $this->className . '::' . $this->xmlAttributes[$name]['propertyName'] . '.', 1322482839);
+			}
+		}
+	}
 
 }
-?>

@@ -75,4 +75,3 @@ class Tx_Palm_Persistence_Mapper_DataMapper extends Tx_Extbase_Persistence_Mappe
 
 
 }
-?>

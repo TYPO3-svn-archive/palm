@@ -13,7 +13,7 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	 */
 	protected $configurationManager;
 
-	/*
+	/**
 	 * @var Tx_Extbase_Persistence_Mapper_DataMapper
 	 */
 	protected $dataMapper;
@@ -31,6 +31,11 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	/**
 	 * @var Tx_Palm_Reflection_Service
 	 */
+	protected $palmReflectionService;
+
+	/**
+	 * @var Tx_Extbase_Reflection_Service
+	 */
 	protected $reflectionService;
 
 	/**
@@ -39,22 +44,28 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	protected $propertyMapper;
 
 	/**
+	 * @var Tx_Extbase_Service_TypoScriptService
+	 */
+	protected $typoScriptService;
+
+	/**
 	 * @var Tx_Extbase_Validation_ValidatorResolver
 	 */
 	protected $validatorResolver;
 
-
 	/**
+	 * Injector method for a content object
+	 *
 	 * @param tslib_cObj $contentObject
-	 * @return void
 	 */
 	public function injectContentObject(tslib_cObj $contentObject) {
 		$this->contentObject = $contentObject;
 	}
 
 	/**
+	 * Injector method for a configuration mananger
+	 *
 	 * @param Tx_Palm_Configuration_ConfigurationManager $configurationManager
-	 * @return void
 	 */
 	public function injectConfigurationManager(Tx_Palm_Configuration_ConfigurationManager $configurationManager) {
 		$this->configurationManager = $configurationManager;
@@ -62,7 +73,7 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	}
 
 	/**
-	 * Injector method for a Tx_Extbase_Persistence_Mapper_DataMapper
+	 * Injector method for a data mapper
 	 *
 	 * @var Tx_Extbase_Persistence_Mapper_DataMapper
 	 */
@@ -72,23 +83,34 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 
 	/**
 	 * Injector Method for object manager
+	 *
 	 * @param Tx_Extbase_Object_ObjectManagerInterface $objectManager
 	 */
 	public function injectObjectMananger(Tx_Extbase_Object_ObjectManagerInterface $objectManager) {
 		$this->objectManager = $objectManager;
 	}
 
+	/**
+	 * Injector method for a palm reflection service
+	 *
+	 * @var Tx_Palm_Reflection_Service
+	 */
+	public function injectPalmReflectionService(Tx_Palm_Reflection_Service $palmReflectionService) {
+		$this->palmReflectionService = $palmReflectionService;
+	}
 
 	/**
 	 * Injector Method for reflection service
-	 * @param Tx_Palm_Reflection_Service $reflectionService
+	 *
+	 * @param Tx_Extbase_Reflection_Service $reflectionService
 	 */
-	public function injectReflectionService(Tx_Palm_Reflection_Service $reflectionService) {
+	public function injectReflectionService(Tx_Extbase_Reflection_Service $reflectionService) {
 		$this->reflectionService = $reflectionService;
 	}
 
 	/**
 	 * Injector Method for property mapper
+	 *
 	 * @param Tx_Extbase_Property_Mapper $propertyMapper
 	 */
 	public function injectPropertyMapper(Tx_Extbase_Property_Mapper $propertyMapper) {
@@ -96,7 +118,17 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	}
 
 	/**
-	 * Injector Method for validator resolver
+	 * Injector method for a typoscript service
+	 *
+	 * @var Tx_Extbase_Service_TypoScriptService
+	 */
+	public function injectTypoScriptService(Tx_Extbase_Service_TypoScriptService $typoScriptService) {
+		$this->typoScriptService = $typoScriptService;
+	}
+
+	/**
+	 * Injector Method for a validator resolver
+	 *
 	 * @param Tx_Extbase_Validation_ValidatorResolver $validatorResolver
 	 */
 	public function injectValidatorResolver(Tx_Extbase_Validation_ValidatorResolver $validatorResolver) {
@@ -111,13 +143,13 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	public function getPropertyMapper() {
 		return $this->propertyMapper;
 	}
+
 	/**
 	 * @param Object $obj
 	 * @return DOMDocument
 	 */
 	public function serialize($obj) {
-		/** @var Tx_Palm_Reflection_ClassSchema $classSchema */
-		$classSchema = $this->reflectionService->getClassSchema($obj);
+		$classSchema = $this->palmReflectionService->getClassSchema($obj);
 		/** @var Tx_Palm_DOM_Document $doc */
 		$doc = $this->objectManager->create('Tx_Palm_DOM_Document');
 		$root = $doc->createElement($classSchema->getXmlRootName());
@@ -132,16 +164,16 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	 * @param DOMElement $target
 	 */
 	protected function serializeObject($obj, DOMElement $target) {
-		/** @var Tx_Palm_Reflection_ClassSchema $classSchema */
 		$classSchema = $this->reflectionService->getClassSchema($obj);
+		$xmlClassSchema = $this->palmReflectionService->getClassSchema($obj);
 		if (isset($this->configuration['mapping']['xml']['classes'][$classSchema->getClassName()]['debug']) && $this->configuration['mapping']['xml']['classes'][$classSchema->getClassName()]['debug']) {
 			t3lib_utility_Debug::debug($classSchema->getProperties());
 		}
-		foreach($classSchema->getPropertyNames() as $propName) {
-			if ($classSchema->isXmlNameForProperty($propName)) {
+		foreach($xmlClassSchema->getPropertyNames() as $propName) {
+			if ($xmlClassSchema->isXmlNameForProperty($propName)) {
 				$propertyMeta = $classSchema->getProperty($propName);
 				$value = Tx_Extbase_Reflection_ObjectAccess::getProperty($obj, $propName);
-				$wrapperName = $classSchema->getXmlWrapperForProperty($propName);
+				$wrapperName = $xmlClassSchema->getXmlWrapperForProperty($propName);
 				if ($wrapperName) {
 					$tempTarget = $target->appendChild($target->ownerDocument->createElement($wrapperName));
 				} else {
@@ -150,16 +182,15 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 				if ($propertyMeta['type'] == 'Tx_Extbase_Persistence_ObjectStorage' || is_subclass_of($propertyMeta['type'], 'Tx_Extbase_Persistence_ObjectStorage')) {
 					foreach($value as $item) {
 						$value = $this->transformForOutput($item, $classSchema->getClassName(), $propName, $value);
-						$this->serializeProperty($classSchema, $propName, $item, $tempTarget, $obj);
+						$this->serializeProperty($xmlClassSchema, $propName, $item, $tempTarget, $obj);
 					}
 				} else {
 					$value = $this->transformForOutput($obj, $classSchema->getClassName(), $propName, $value);
-					$this->serializeProperty($classSchema, $propName, $value, $tempTarget, $obj);
+					$this->serializeProperty($xmlClassSchema, $propName, $value, $tempTarget, $obj);
 				}
 			}
 		}
 	}
-
 
 	/**
 	 * @param Tx_Palm_Reflection_ClassSchema $classSchema
@@ -213,9 +244,9 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 			$target->appendChild($documentFragment);
 		}
 
-		if (!$classSchema->getIgnoreUnmappedProperties() && !$attrName && !$elementName && !$classSchema->isXmlValueForProperty($propName, $valueType)) {
-			throw new RuntimeException("Don't know how to serialize value of type '$valueType' for property '$propName' of class '{$classSchema->getClassName()}'");
-		}
+//		if (!$classSchema->getIgnoreUnmappedProperties() && !$attrName && !$elementName && !$classSchema->isXmlValueForProperty($propName, $valueType)) {
+//			throw new RuntimeException("Don't know how to serialize value of type '$valueType' for property '$propName' of class '{$classSchema->getClassName()}'");
+//		}
 	}
 
 	/**
@@ -229,7 +260,7 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	protected function transformForOutput($sourceObject, $className, $propertyName, $value, $format = 'xml') {
 		if (isset($this->configuration['transformOut']['xml']['classes'][$className]['properties'][$propertyName])) {
 			$propertyTransformationObject = $this->configuration['transformOut'][$format]['classes'][$className]['properties'][$propertyName]['_typoScriptNodeValue'];
-			$propertyTransformation = Tx_Extbase_Utility_TypoScript::convertPlainArrayToTypoScriptArray($this->configuration['transformOut'][$format]['classes'][$className]['properties'][$propertyName]);
+			$propertyTransformation = $this->typoScriptService->convertPlainArrayToTypoScriptArray($this->configuration['transformOut'][$format]['classes'][$className]['properties'][$propertyName]);
 			$sourceValues = Tx_Extbase_Reflection_ObjectAccess::getGettableProperties($sourceObject);
 			foreach ($sourceValues as $key=>$sourceValue) {
 				if ($this->isObject($sourceValue)) {
@@ -256,7 +287,7 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	protected function transformForInput($sourceArray, $className, $propertyName, $value, $format = 'xml') {
 		if (isset($this->configuration['transformIn']['xml']['classes'][$className]['properties'][$propertyName])) {
 			$propertyTransformationObject = $this->configuration['transformIn'][$format]['classes'][$className]['properties'][$propertyName]['_typoScriptNodeValue'];
-			$propertyTransformation = Tx_Extbase_Utility_TypoScript::convertPlainArrayToTypoScriptArray($this->configuration['transformIn'][$format]['classes'][$className]['properties'][$propertyName]);
+			$propertyTransformation = $this->typoScriptService->convertPlainArrayToTypoScriptArray($this->configuration['transformIn'][$format]['classes'][$className]['properties'][$propertyName]);
 			// TODO elaborate why this is neccessary
 			$GLOBALS['TSFE']->cObjectDepthCounter = 50;
 			if (!isset($GLOBALS['TSFE']->tmpl)) {
@@ -286,7 +317,6 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 		return ($type == 'double') ? 'float' : $type ;
 	}
 
-
 	/**
 	 * @param mixed $value
 	 * @return boolean
@@ -294,7 +324,6 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	protected function isObject($value) {
 		return is_object($value) && !($value instanceof DateTime);
 	}
-
 
 	/**
 	 * @param mixed $value
@@ -306,17 +335,12 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 
 		if ($value instanceof DateTime) {
 			/** @var DateTime $value */
-//			$result = $value->format("o-m-d\TH:i:s\Z");
 			$result = $value->format("c");
-//			$time = $value->format("H:i:s");
-//			if ($time != "00:00:00")
-//				$result .= " $time";
 			return $result;
 		}
 
 		return (string)$value;
 	}
-
 
 	/**
 	 * Unserialization
@@ -333,7 +357,6 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 		return $target;
 	}
 
-
 	/**
 	 * Maps the given DOMElement to an property mapper conform array
 	 * @param DOMElement $source
@@ -341,15 +364,24 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	 * @return array
 	 */
 	protected function mapXmlToArray(DOMNode $source, $class) {
-		$classMaps = array($this->reflectionService->getClassSchema($class));
+		$classMaps = array(
+			array(
+				'classSchema' => $this->reflectionService->getClassSchema($class),
+				'xmlClassSchema' => $this->palmReflectionService->getClassSchema($class)
+			)
+		);
 
 		// We have to check the subclasses also for properties, as we don't know yet what the target type will be
 		$dataMap = $this->dataMapper->getDataMap($class);
 		if ($dataMap !== NULL) {
 			foreach($dataMap->getSubclasses() as $subclass) {
 				$subclassMap = $this->reflectionService->getClassSchema($subclass);
+				$xmlSubclassMap = $this->palmReflectionService->getClassSchema($subclass);
 				if ($subclassMap !== NULL) {
-					$classMaps[] = $subclassMap;
+					$classMaps[] = array(
+						'classSchema' => $subclassMap,
+						'xmlClassSchema' => $xmlSubclassMap
+					);
 				}
 			}
 		}
@@ -365,10 +397,10 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 		}
 
 		foreach($potentialProperties as $potentialProperty) {
-			foreach($classMaps as $classSchema) {
-				$propertyMapping = $this->mapPotentialPropertyToArray($potentialProperty, $classSchema);
+			foreach($classMaps as $classSchemas) {
+				$propertyMapping = $this->mapPotentialPropertyToArray($potentialProperty, $classSchemas['xmlClassSchema']);
 				if ($propertyMapping !== NULL) {
-					$propertyMetaData = $classSchema->getProperty($propertyMapping['name']);
+					$propertyMetaData = $classSchemas['classSchema']->getProperty($propertyMapping['name']);
 					if ($propertyMapping['type'] == $propertyMetaData['elementType'] && in_array($propertyMetaData['type'], array('array', 'ArrayObject', 'Tx_Extbase_Persistence_ObjectStorage'))) {
 						// Oh, nice. We're dealing with a persistence storage
 						$bag[$propertyMapping['name']][] = $propertyMapping['value'];
@@ -381,8 +413,8 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 		}
 		// We can define also new properties via TS config so we have to consider all properties, even subclassed ones
 		$properties = Array();
-		foreach($classMaps as $classSchema) {
-			$properties = array_keys($classSchema->getProperties());
+		foreach($classMaps as $classSchemas) {
+			$properties = array_keys($classSchemas['classSchema']->getProperties());
 		}
 		if (
 			isset($this->configuration['transformIn']['xml']['classes'][$class]['properties']) &&
@@ -517,5 +549,3 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 
 
 }
-
-?>

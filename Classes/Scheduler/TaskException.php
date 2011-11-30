@@ -1,4 +1,4 @@
- <?php
+<?php
 /***************************************************************
  *  Copyright notice
  *
@@ -31,34 +31,14 @@
  * @entity
  * @api
  */
-class Tx_Palm_ViewHelpers_SerializeViewHelper extends Tx_Fluid_Core_ViewHelper_AbstractViewHelper {
+class tx_Palm_Scheduler_TaskException extends Exception implements Serializable {
 
-	/**
-	 * @var Tx_Palm_Xml_Serializer
-	 */
-	protected $xmlSerializer;
-
-	/**
-	 * @param Tx_Palm_Xml_Serializer $xmlSerializer
-	 * @return void
-	 */
-	public function injectXmlSerializer(Tx_Palm_Xml_Serializer $xmlSerializer) {
-		$this->xmlSerializer = $xmlSerializer;
+	public function serialize() {
+		return serialize(array($this->validator, $this->arguments, $this->code, $this->message));
 	}
 
-	/**
-	 * @param mixed $target
-	 * @return void
-	 */
-	public function render($target) {
-		$document = $this->xmlSerializer->serialize($target);
-		if ($document) {
-			$result = '';
-			foreach ($document->childNodes as $childNode) {
-				$result .= $document->saveXML($childNode);
-			}
-			return $result;
-		}
+	public function unserialize($serialized) {
+		list($this->validator, $this->arguments, $this->code, $this->message) = unserialize($serialized);
 	}
 
 }

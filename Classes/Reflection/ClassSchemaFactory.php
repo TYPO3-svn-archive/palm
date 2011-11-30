@@ -41,13 +41,19 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 	protected $configurationManager;
 
 	/**
-	 * @var Tx_Palm_Reflection_Service
+	 * @var Tx_Extbase_Object_ObjectManager
 	 */
-	protected $reflectionService;
+	protected $objectManager;
 
 	/**
+	 * @var Tx_Extbase_Service_TypeHandlingService
+	 */
+	protected $typeHandlingService;
+
+	/**
+	 * Injector method for a configuration manager
+	 *
 	 * @param Tx_Palm_Configuration_ConfigurationManager $configurationManager
-	 * @return void
 	 */
 	public function injectConfigurationManager(Tx_Palm_Configuration_ConfigurationManager $configurationManager) {
 		$this->configurationManager = $configurationManager;
@@ -56,11 +62,21 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 	}
 
 	/**
-	 * Injector Method for reflection service
-	 * @param Tx_PalmReflection_Service $reflectionService
+	 * Injector method for a object manager
+	 *
+	 * @param Tx_Extbase_Object_ObjectManager
 	 */
-	public function injectReflectionService(Tx_Palm_Reflection_Service $reflectionService) {
-		$this->reflectionService = $reflectionService;
+	public function injectObjectManager(Tx_Extbase_Object_ObjectManager $objectManager) {
+		$this->objectManager = $objectManager;
+	}
+
+	/**
+	 * Injector method for a type handling service
+	 *
+	 * @param Tx_Extbase_Service_TypeHandlingService $typeHandlingService
+	 */
+	public function injectTypeHandlingService(Tx_Extbase_Service_TypeHandlingService $typeHandlingService) {
+		$this->typeHandlingService = $typeHandlingService;
 	}
 
 	/**
@@ -74,22 +90,11 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 			return NULL;
 		}
 
-		$classSchema = new Tx_Palm_Reflection_ClassSchema($className);
-		if (is_subclass_of($className, 'Tx_Extbase_DomainObject_AbstractEntity')) {
-			$classSchema->setModelType(Tx_Extbase_Reflection_ClassSchema::MODELTYPE_ENTITY);
+		/** @var $classSchema Tx_Palm_Reflection_ClassSchema */
+		$classSchema = $this->objectManager->create('Tx_Palm_Reflection_ClassSchema', $className);
+		$reflectionClass = new Tx_Extbase_Reflection_ClassReflection($className);
 
-			$possibleRepositoryClassName = str_replace('_Model_', '_Repository_', $className) . 'Repository';
-			if (class_exists($possibleRepositoryClassName)) {
-				$classSchema->setAggregateRoot(TRUE);
-			}
-		} elseif (is_subclass_of($className, 'Tx_Extbase_DomainObject_AbstractValueObject')) {
-			$classSchema->setModelType(Tx_Extbase_Reflection_ClassSchema::MODELTYPE_VALUEOBJECT);
-		} else {
-			return NULL;
-		}
-
-
-		$mappingInformation = $this->buildMappingInformation($className);
+		$mappingInformation = $this->buildMappingInformation($reflectionClass);
 		if (isset($this->configuration['classes'][$className]) && is_array($this->configuration['classes'][$className])) {
 			$mappingInformation = t3lib_div::array_merge_recursive_overrule($mappingInformation, $this->configuration['classes'][$className]);
 		}
@@ -112,13 +117,16 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 			$classSchema->setXmlRoot($mappingInformation['rootName'], (isset($mappingInformation['rootDescription'])) ? isset($mappingInformation['rootDescription']) : '');
 		}
 
-		if (isset($mappingInformation['ignoreUnmappedProperties'])) {
-			$classSchema->setIgnoreUnmappedProperties($mappingInformation['ignoreUnmappedProperties']);
-		} elseif (isset($this->configuration['ignoreUnmappedProperties'])) {
-			$classSchema->setIgnoreUnmappedProperties($this->configuration['ignoreUnmappedProperties']);
-		}
+		// TODO See if we need this
+		//if (isset($mappingInformation['ignoreUnmappedProperties'])) {
+		//	$classSchema->setIgnoreUnmappedProperties($mappingInformation['ignoreUnmappedProperties']);
+		//} elseif (isset($this->configuration['ignoreUnmappedProperties'])) {
+		//	$classSchema->setIgnoreUnmappedProperties($this->configuration['ignoreUnmappedProperties']);
+		//}
 
-		foreach ($this->reflectionService->getClassPropertyNames($className) as $propertyName) {
+		foreach ($reflectionClass->getProperties() as $property) {
+			/** @var $property Tx_Extbase_Reflection_PropertyReflection */
+			$propertyName = $property->getName();
 			if (isset($mappingInformation['properties'][$propertyName])) {
 				$propertyConfiguration = $mappingInformation['properties'][$propertyName];
 				if (isset($propertyConfiguration['wrapperName'])) {
@@ -127,7 +135,7 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 				if (isset($propertyConfiguration['removeMappingFor'])) {
 					$removeMappingFor = t3lib_div::trimExplode(',', $propertyConfiguration['removeMappingFor']);
 					foreach ($removeMappingFor as $valueType) {
-						$valueType = Tx_Extbase_Utility_TypeHandling::normalizeType($valueType);
+						$valueType = $this->typeHandlingService->normalizeType($valueType);
 						if (isset($propertyConfiguration[$valueType])) {
 							unset($propertyConfiguration[$valueType]);
 						}
@@ -135,6 +143,7 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 				}
 				foreach ($propertyConfiguration as $valueType=>$mappingConfiguration) {
 					if (is_array($mappingConfiguration)) {
+						$valueType = $this->typeHandlingService->normalizeType($valueType);
 						switch ($mappingConfiguration) {
 							case array_key_exists('elementName', $mappingConfiguration):
 								$classSchema->addXmlElement($mappingConfiguration['elementName'], $valueType, $propertyName, $mappingConfiguration['description']);
@@ -151,23 +160,6 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 						}
 					}
 				}
-			} else {
-				$propertyConfiguration = array();
-			}
-			if (!$this->reflectionService->isPropertyTaggedWith($className, $propertyName, 'transient') && $this->reflectionService->isPropertyTaggedWith($className, $propertyName, 'var')) {
-				$cascadeTagValues = $this->reflectionService->getPropertyTagValues($className, $propertyName, 'cascade');
-				$classSchema->addProperty(
-					$propertyName,
-					implode(' ', $this->reflectionService->getPropertyTagValues($className, $propertyName, 'var')),
-					$this->reflectionService->isPropertyTaggedWith($className, $propertyName, 'lazy'),
-					$cascadeTagValues[0],
-					$propertyConfiguration);
-			}
-			if ($this->reflectionService->isPropertyTaggedWith($className, $propertyName, 'uuid')) {
-				$classSchema->setUUIDPropertyName($propertyName);
-			}
-			if ($this->reflectionService->isPropertyTaggedWith($className, $propertyName, 'identity')) {
-				$classSchema->markAsIdentityProperty($propertyName);
 			}
 		}
 
@@ -180,35 +172,37 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 	 * @param  $format
 	 * @return array
 	 */
-	protected function buildMappingInformation($className, $format = 'xml') {
+	protected function buildMappingInformation(Tx_Extbase_Reflection_ClassReflection $reflectionClass, $format = 'xml') {
 		$map = array();
-		if($this->reflectionService->isClassTaggedWith($className, $format)) {
-			$xmlTagValues	= $this->reflectionService->getClassTagValues($className, $format);
-			$description	= $this->reflectionService->getClassDescription($className);
+		if($reflectionClass->isTaggedWith($format)) {
+			$xmlTagValues = $reflectionClass->getTagValues($format);
+			$description = $this->getClassDescription($reflectionClass);
 			foreach($xmlTagValues as $xmlTagValue) {
 				list($nodeType, $nodeName) = preg_split('/\s*\(\s*|\s*\)\s*|\s*\,\s*/i', $xmlTagValue, 4, PREG_SPLIT_NO_EMPTY);
 				if(!isset($nodeType) || !in_array($nodeType, array('Root'))) {
-					throw new Tx_Palm_Reflection_Exception_InvalidXmlNodeType('Invalid ' . $format . ' node type "' . $nodeType . '" at ' . $className .  ' . Must be of Root.', 1289413094);
+					throw new Tx_Palm_Reflection_Exception_InvalidXmlNodeType('Invalid ' . $format . ' node type "' . $nodeType . '" at ' . $reflectionClass->name .  ' . Must be of Root.', 1289413094);
 				}
 				$map['rootName'] = $nodeName;
 				$map['rootDescription'] = $description;
 				break;
 			}
 		}
-		foreach ($this->reflectionService->getClassPropertyNames($className) as $propertyName) {
+		foreach ($reflectionClass->getProperties() as $property) {
+			/** @var $property Tx_Extbase_Reflection_PropertyReflection */
+			$propertyName = $property->getName();
 			$propertyConfiguration = array();
-			if($this->reflectionService->isPropertyTaggedWith($className, $propertyName, $format)) {
-				$tagValues	= $this->reflectionService->getPropertyTagValues($className, $propertyName, $format);
-				$description	= $this->reflectionService->getPropertyDescription($className, $propertyName);
+			if($property->isTaggedWith($format)) {
+				$tagValues	= $property->getTagValues($format);
+				$description	= $this->getPropertyDescription($property);
 				foreach($tagValues as $tagValue) {
 					list($nodeType, $valueType, $nodeName) = preg_split('/\s*\(\s*|\s*\)\s*|\s*\,\s*/i', $tagValue, 4, PREG_SPLIT_NO_EMPTY);
-					$valueType = Tx_Extbase_Utility_TypeHandling::normalizeType($valueType);
+					$valueType = $this->typeHandlingService->normalizeType($valueType);
 					// Attention! Wrapper has no valueType and Value no Node Name
 					if(!isset($nodeType) || !in_array($nodeType, array('Wrapper','Element', 'Attribute', 'Value'))) {
-						throw new Tx_Palm_Reflection_Exception_InvalidXmlNodeType('Invalid xml node type "' . $nodeType . '" at ' . $className . '::' . $propertyName .  ' . Must be one of Wrapper/Element/Attribute/Value.', 1289409062);
+						throw new Tx_Palm_Reflection_Exception_InvalidXmlNodeType('Invalid xml node type "' . $nodeType . '" at ' . $reflectionClass->name . '::' . $propertyName .  ' . Must be one of Wrapper/Element/Attribute/Value.', 1289409062);
 					}
 					if(isset($propertyConfiguration[$valueType])) {
-						throw new Tx_Palm_Reflection_Exception_DuplicateXmlTypeBinding('The value type "' . $valueType . '" is already bound to ' . $className . '::' . $propertyName , 1289559710);
+						throw new Tx_Palm_Reflection_Exception_DuplicateXmlTypeBinding('The value type "' . $valueType . '" is already bound to ' . $reflectionClass->name . '::' . $propertyName , 1289559710);
 					}
 					if(empty($nodeName)) {
 						$nodeName = $propertyName;
@@ -219,28 +213,24 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 								$nodeName = $valueType;
 							}
 							$propertyConfiguration['wrapperName'] = $nodeName;
-	//						$classSchema->addXmlElementWrapper($nodeName, $propertyName);
 							break;
 						case 'Element':
 							$propertyConfiguration[$valueType] = Array(
 								'elementName'	=> $nodeName,
 								'description'	=> $description
 							);
-	//						$classSchema->addXmlElement($nodeName, $valueType, $propertyName, $description);
 							break;
 						case 'Attribute':
 							$propertyConfiguration[$valueType] = Array(
 								'attributeName'	=> $nodeName,
 								'description'	=> $description
 							);
-	//						$classSchema->addXmlAttribute($nodeName, $valueType, $propertyName, $description);
 							break;
 						case 'Value':
 							$propertyConfiguration[$valueType] = Array(
-								'isValue'	=> true,
+								'isValue'		=> true,
 								'description'	=> $description
 							);
-	//						$classSchema->addXmlValue($valueType, $propertyName, $description);
 							break;
 						case 'RawValue':
 							$propertyConfiguration[$valueType] = Array(
@@ -256,5 +246,39 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 			}
 		}
 		return $map;
+	}
+
+	/**
+	 * @param ReflectionClass $reflectionClass
+	 * @return string
+	 */
+	protected function getClassDescription(ReflectionClass $reflectionClass) {
+		// Get class description without tags
+		$lines = explode(chr(10), $reflectionClass->getDocComment());
+		$description = Array();
+		foreach ($lines as $line) {
+			$line = preg_replace('/\s*\\/?[\\\*\/]*\s*(.*)$/', '$1', $line);
+			if (strlen($line) > 0 && substr($line,0,1) !== '@') {
+				$description[] = $line;
+			}
+		}
+		return implode(' ', $description);
+	}
+
+	/**
+	 * @param ReflectionProperty $reflectionProperty
+	 * @return string
+	 */
+	protected function getPropertyDescription(ReflectionProperty $reflectionProperty) {
+		// Get property descriptions without tags
+		$lines = explode(chr(10), $reflectionProperty->getDocComment());
+		$description = Array();
+		foreach ($lines as $line) {
+			$line = preg_replace('/\s*\\/?[\\\*\/]*\s*(.*)$/', '$1', $line);
+			if (strlen($line) > 0 && substr($line,0,1) !== '@') {
+				$description[] = $line;
+			}
+		}
+		return implode(' ', $description);
 	}
 }

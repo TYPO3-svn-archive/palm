@@ -96,4 +96,3 @@ class Tx_Palm_Configuration_ConfigurationManager implements Tx_Palm_Configuratio
 	}
 
 }
-?>

@@ -599,5 +599,3 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 	}
 
 }
-
-?>

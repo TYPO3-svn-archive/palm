@@ -104,5 +104,3 @@ class Tx_Palm_Merger_RuleBuilder implements t3lib_Singleton {
 	}
 
 }
-
-?>

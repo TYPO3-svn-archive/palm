@@ -303,7 +303,5 @@ class Tx_Palm_Reflection_ObjectAccess {
 	static protected function buildSetterMethodName($property) {
 		return 'set' . ucfirst($property);
 	}
+
 }
-
-
-?>

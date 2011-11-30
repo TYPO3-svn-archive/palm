@@ -81,5 +81,5 @@ class Tx_Palm_ViewHelpers_Uri_ActionViewHelper extends Tx_Fluid_ViewHelpers_Uri_
 			$argumentsToBeExcludedFromQueryString
 		);
 	}
+
 }
-?>

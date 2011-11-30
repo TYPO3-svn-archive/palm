@@ -114,5 +114,5 @@ class Tx_Palm_ViewHelpers_Be_EntityLabelViewHelper extends Tx_Fluid_ViewHelpers_
 		}
 		return $columnNamePropertyNameMap;
 	}
+
 }
-?>

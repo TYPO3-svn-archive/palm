@@ -12,4 +12,3 @@ interface Tx_Palm_Merger_ServiceInterface extends t3lib_Singleton {
 	const GETTER_SCOPE_COLLECTION		= 'Collection';
 
 }
-?>

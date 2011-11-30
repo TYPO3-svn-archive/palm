@@ -58,5 +58,5 @@ class Tx_Palm_ViewHelpers_Be_PropertyByPathViewHelper extends Tx_Fluid_ViewHelpe
 	public function render(Tx_Extbase_DomainObject_DomainObjectInterface $entity, $propertyPath) {
 		return Tx_Extbase_Reflection_ObjectAccess::getPropertyPath($entity, $propertyPath);
 	}
+
 }
-?>

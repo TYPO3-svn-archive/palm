@@ -106,5 +106,5 @@ class Tx_Palm_ViewHelpers_Be_TableViewHelper extends Tx_Fluid_ViewHelpers_Be_Abs
 		$this->templateVariableContainer->remove($tableDataKey);
 		return $doc->table($tableData, $tableLayout);
 	}
+
 }
-?>

@@ -9,6 +9,10 @@
 			<label index="mlang_tabs_tab">Palm Module</label>
 			<label index="mlang_labels_tabdescr">This backend module can be used to import data from external sources into TYPO3 tables extended with special definitions in the TCA.</label>
 			<label index="mlang_labels_tablabel">Import data from external sources into TYPO3 tables</label>
+			<label index="mlang_labels_tablabel">Import data from external sources into TYPO3 tables</label>
+			<label index="scheduler_taskField_pid">Type in the pid where the task should be executed.</label>
+			<label index="scheduler_taskField_entityName">Type in the entityName that should be merged.</label>
+			<label index="scheduler_taskField_fileName">Type in the fileName of the xml source.</label>
 		</languageKey>
 	</data>
 </T3locallang>

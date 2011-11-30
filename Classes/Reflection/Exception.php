@@ -32,5 +32,3 @@
 class Tx_Palm_Reflection_Exception extends Tx_Extbase_Reflection_Exception {
 
 }
-
-?>

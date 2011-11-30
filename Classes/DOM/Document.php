@@ -42,5 +42,3 @@ class Tx_Palm_DOM_Document extends DOMDocument {
 	}
 
 }
-
-?>
