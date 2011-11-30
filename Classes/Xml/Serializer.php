@@ -122,9 +122,10 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	 *
 	 * @var Tx_Extbase_Service_TypoScriptService
 	 */
-	public function injectTypoScriptService(Tx_Extbase_Service_TypoScriptService $typoScriptService) {
-		$this->typoScriptService = $typoScriptService;
-	}
+	// TODO Uncomment if 4.5 is not a requirement anymore
+	// public function injectTypoScriptService(Tx_Extbase_Service_TypoScriptService $typoScriptService) {
+	//	$this->typoScriptService = $typoScriptService;
+	// }
 
 	/**
 	 * Injector Method for a validator resolver
@@ -142,6 +143,17 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	 */
 	public function getPropertyMapper() {
 		return $this->propertyMapper;
+	}
+
+	/**
+	 * Initializes the object
+	 */
+	public function initializeObject() {
+		if (class_exists('Tx_Extbase_Service_TypoScriptService')) {
+			$this->typoScriptService = $this->objectManager->get('Tx_Extbase_Service_TypoScriptService');	
+		} else {
+			$this->typoScriptService = new Tx_Extbase_Utility_TypoScript();
+		}
 	}
 
 	/**

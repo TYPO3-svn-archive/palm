@@ -6,7 +6,13 @@ if (!defined ('TYPO3_MODE'))    die ('Access denied.');
 	// and t3lib_cache_backend_DbBackend by default if not set otherwise.
 	// This default is perfectly fine for our reflection and object cache.
 if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations']['palm_reflection'])) {
-	$GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations']['palm_reflection'] = array();
+	$GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations']['palm_reflection'] = array(
+		'backend' => 't3lib_cache_backend_DbBackend',
+		'options' => array(
+			'cacheTable' => 'tx_palm_cache_reflection',
+			'tagsTable' => 'tx_palm_cache_reflection_tags',
+		),
+	);
 }
 
 $TYPO3_CONF_VARS['FE']['eID_include']['SchemaGenerator'] = 'EXT:palm/Classes/Utility/SchemaGenerator.php';

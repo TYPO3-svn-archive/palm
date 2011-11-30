@@ -75,8 +75,21 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 	 *
 	 * @param Tx_Extbase_Service_TypeHandlingService $typeHandlingService
 	 */
-	public function injectTypeHandlingService(Tx_Extbase_Service_TypeHandlingService $typeHandlingService) {
-		$this->typeHandlingService = $typeHandlingService;
+	// TODO renenable when TYPO3 4.5 is not a requirement anymore
+	// public function injectTypeHandlingService(Tx_Extbase_Service_TypeHandlingService $typeHandlingService) {
+	// 	$this->typeHandlingService = $typeHandlingService;
+	// }
+
+
+	/**
+	 * Initializes the object
+	 */
+	public function initializeObject() {
+		if (class_exists('Tx_Extbase_Service_TypeHandlingService')) {
+			$this->typeHandlingService = $this->objectManager->get('Tx_Extbase_Service_TypeHandlingService');
+		} else {
+			$this->typeHandlingService = new Tx_Extbase_Utility_TypeHandling();
+		}
 	}
 
 	/**

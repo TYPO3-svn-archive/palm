@@ -528,7 +528,7 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 									$referenceValue[] = $reference;
 								}
 							}
-							$referenceValue = implode('$%$', $referenceValue);
+							$referenceValue = implode('', $referenceValue);
 							if($referenceValue) {
 								if(is_array($entityReference[$referenceValue])) {
 									$entityReference[$referenceValue]['internal'] = $entity;

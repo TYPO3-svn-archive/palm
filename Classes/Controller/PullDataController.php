@@ -69,7 +69,9 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 	 * @return void
 	 */
 	public function initializeAction() {
-		$this->pid = ($this->pid === NULL) ? $this->getCurrentPid() : $this->pid;
+		if ($this->actionMethodName !== 'testRecordAction') {
+			$this->pid = ($this->pid === NULL) ? $this->getCurrentPid() : $this->pid;
+		}
 		global $TYPO3_CONF_VARS;
 		if (is_array($TYPO3_CONF_VARS['SC_OPTIONS']['t3lib/class.t3lib_tcemain.php']['processDatamapClass'])) {
 			foreach ($TYPO3_CONF_VARS['SC_OPTIONS']['t3lib/class.t3lib_tcemain.php']['processDatamapClass'] as $classRef) {

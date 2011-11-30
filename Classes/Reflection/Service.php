@@ -80,7 +80,17 @@ class Tx_Palm_Reflection_Service {
 	 * Constructor method for a reflection service
 	 */
 	public function initializeObject() {
-		$this->dataCache = $GLOBALS['typo3CacheManager']->getCache('palm_reflection');
+		try {
+			$this->dataCache = $GLOBALS['typo3CacheManager']->getCache('palm_reflection');
+		} catch(t3lib_cache_exception_NoSuchCache $e) {
+			$GLOBALS['typo3CacheFactory']->create(
+				'palm_reflection',
+				't3lib_cache_frontend_VariableFrontend',
+				$GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations']['palm_reflection']['backend'],
+				$GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations']['palm_reflection']['options']
+			);
+			$this->dataCache = $GLOBALS['typo3CacheManager']->getCache('palm_reflection');
+		}
 		$frameworkConfiguration = $this->configurationManager->getConfiguration(Tx_Extbase_Configuration_ConfigurationManagerInterface::CONFIGURATION_TYPE_FRAMEWORK);
 		$this->cacheIdentifier = 'PalmReflectionData_' . $frameworkConfiguration['extensionName'];
 		$this->loadFromCache();
