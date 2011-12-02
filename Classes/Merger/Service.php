@@ -253,7 +253,7 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 	 */
 	public function getResolvedSinglePathInCollection(Tx_Palm_Merger_RootRule $rule, Tx_Extbase_DomainObject_DomainObjectInterface $entity) {
 		$internalPropertyPath = $this->getPropertyPathFromRule($rule);
-		$internalPropertyValue = Tx_Extbase_Reflection_ObjectAccess::getPropertyPath($entity, $internalPropertyPath);
+		$internalPropertyValue = Tx_Palm_Reflection_ObjectAccess::getPropertyPath($entity, $internalPropertyPath);
 		return str_replace('{' . $internalPropertyPath . '}', $internalPropertyValue, $rule->getSinglePathInCollection());
 	}
 
@@ -281,7 +281,7 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 		if ((bool) $entity->getUid()) {
 			return TRUE;
 		} else {
-			$matchValue = Tx_Extbase_Reflection_ObjectAccess::getPropertyPath($entity, $rule->getMatchOn());
+			$matchValue = Tx_Palm_Reflection_ObjectAccess::getPropertyPath($entity, $rule->getMatchOn());
 			if ($matchValue === NULL) {
 				throw new InvalidArgumentException('The given entity has a match value of NULL at the given match path "' . $rule->getMatchOn() . '"', 1303384484);
 			}
@@ -415,15 +415,15 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 
 		$classSchema = $this->reflectionService->getClassSchema($internalEntity);
 		$properties = $classSchema->getProperties();
-		$propertyNames = array_intersect(Tx_Extbase_Reflection_ObjectAccess::getGettablePropertyNames($internalEntity), array_keys($properties));
+		$propertyNames = array_intersect(Tx_Palm_Reflection_ObjectAccess::getGettablePropertyNames($internalEntity), array_keys($properties));
 
 		foreach ($propertyNames as $propertyName) {
 			if(in_array($propertyName, array('uid','pid','_localizedUid', '_languageUid', '_cleanProperties', '_isClone'))) {
 				continue;
 			}
 
-			$externalProperty	= Tx_Extbase_Reflection_ObjectAccess::getProperty($externalEntity, $propertyName);
-			$internalProperty	= Tx_Extbase_Reflection_ObjectAccess::getProperty($internalEntity, $propertyName);
+			$externalProperty	= Tx_Palm_Reflection_ObjectAccess::getProperty($externalEntity, $propertyName);
+			$internalProperty	= Tx_Palm_Reflection_ObjectAccess::getProperty($internalEntity, $propertyName);
 			$scope				= $this->determineScope($classSchema, $propertyName);
 			$specificRule		= (isset($nestedRules[$propertyName])) ? $nestedRules[$propertyName] : $rule;
 			$action				= $this->determineAction($specificRule, $scope, $externalProperty, $internalProperty);
@@ -478,14 +478,14 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 				// Do nothing
 				break;
 			case Tx_Palm_Merger_RuleInterface::ACTION_TAKE_EXTERNAL:
-				Tx_Extbase_Reflection_ObjectAccess::setProperty($internalEntity, $propertyName, $externalProperty);
+				Tx_Palm_Reflection_ObjectAccess::setProperty($internalEntity, $propertyName, $externalProperty);
 				break;
 			case Tx_Palm_Merger_RuleInterface::ACTION_DELETE:
 				if ($scope === self::GETTER_SCOPE_COLLECTION) {
-					$storage = Tx_Extbase_Reflection_ObjectAccess::getProperty($internalEntity, $propertyName);
+					$storage = Tx_Palm_Reflection_ObjectAccess::getProperty($internalEntity, $propertyName);
 					$storage->removeAll(clone $storage);
 				} else {
-					Tx_Extbase_Reflection_ObjectAccess::setProperty($internalEntity, $propertyName, null);
+					Tx_Palm_Reflection_ObjectAccess::setProperty($internalEntity, $propertyName, null);
 				}
 				break;
 			case Tx_Palm_Merger_RuleInterface::ACTION_MATCH_INDIVIDUAL:
@@ -502,7 +502,7 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 						foreach($externalProperty as $entity) {
 							$referenceValue = '';
 							foreach($matchOns as $matchOn) {
-								$reference = Tx_Extbase_Reflection_ObjectAccess::getPropertyPath($entity, $matchOn);
+								$reference = Tx_Palm_Reflection_ObjectAccess::getPropertyPath($entity, $matchOn);
 								if (is_object($reference) && $reference instanceof DateTime) {
 									$referenceValue .= $reference->format("o-m-d\TH:i:s\Z");
 								} elseif(is_object($reference)) {
@@ -571,24 +571,24 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 				$lookUpRepository->setDefaultQuerySettings($querySettings);
 				$lookUpProperty = $specificRule->getMatchOn();
 				$lookUpMethod = 'findOneBy' . ucfirst($lookUpProperty);
-				$externalValue = Tx_Extbase_Reflection_ObjectAccess::getProperty($externalEntity, $propertyName);
+				$externalValue = Tx_Palm_Reflection_ObjectAccess::getProperty($externalEntity, $propertyName);
 				if ($scope === self::GETTER_SCOPE_COLLECTION) {
 					$newInternalValue = new Tx_Extbase_Persistence_ObjectStorage();
 					foreach ($externalValue as $externalChild) {
-						$externalChildValue = Tx_Extbase_Reflection_ObjectAccess::getProperty($externalChild, $lookUpProperty);
+						$externalChildValue = Tx_Palm_Reflection_ObjectAccess::getProperty($externalChild, $lookUpProperty);
 						$internalChild = $lookUpRepository->$lookUpMethod($externalChildValue);
 						if ($internalChild !== NULL) {
 							$newInternalValue->attach($internalChild);
 						}
 					}
 					if ($newInternalValue->count() > 0) {
-						Tx_Extbase_Reflection_ObjectAccess::setProperty($internalEntity, $propertyName, $newInternalValue);
+						Tx_Palm_Reflection_ObjectAccess::setProperty($internalEntity, $propertyName, $newInternalValue);
 					}
 				} else {
-					$externalChildValue = Tx_Extbase_Reflection_ObjectAccess::getProperty($externalValue, $lookUpProperty);
+					$externalChildValue = Tx_Palm_Reflection_ObjectAccess::getProperty($externalValue, $lookUpProperty);
 					$internalChild = $lookUpRepository->$lookUpMethod($externalChildValue);
 					if ($internalChild !== NULL) {
-						Tx_Extbase_Reflection_ObjectAccess::setProperty($internalEntity, $propertyName, $internalChild);
+						Tx_Palm_Reflection_ObjectAccess::setProperty($internalEntity, $propertyName, $internalChild);
 					}
 				}
 				break;
