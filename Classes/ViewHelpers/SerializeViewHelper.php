@@ -51,6 +51,9 @@ class Tx_Palm_ViewHelpers_SerializeViewHelper extends Tx_Fluid_Core_ViewHelper_A
 	 * @return void
 	 */
 	public function render($target) {
+		if ($target instanceof Tx_Extbase_Persistence_LoadingStrategyInterface) {
+			$target = $target->_loadRealInstance();
+		}
 		$document = $this->xmlSerializer->serialize($target);
 		if ($document) {
 			$result = '';
