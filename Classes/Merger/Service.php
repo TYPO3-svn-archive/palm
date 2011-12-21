@@ -416,12 +416,10 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 		$classSchema = $this->reflectionService->getClassSchema($internalEntity);
 		$properties = $classSchema->getProperties();
 		$propertyNames = array_intersect(Tx_Palm_Reflection_ObjectAccess::getGettablePropertyNames($internalEntity), array_keys($properties));
-
 		foreach ($propertyNames as $propertyName) {
 			if(in_array($propertyName, array('uid','pid','_localizedUid', '_languageUid', '_cleanProperties', '_isClone'))) {
 				continue;
 			}
-
 			$externalProperty	= Tx_Palm_Reflection_ObjectAccess::getProperty($externalEntity, $propertyName);
 			$internalProperty	= Tx_Palm_Reflection_ObjectAccess::getProperty($internalEntity, $propertyName);
 			$scope				= $this->determineScope($classSchema, $propertyName);
@@ -500,17 +498,18 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 						$entityReference = array();
 						// Index external entities by matchons
 						foreach($externalProperty as $entity) {
-							$referenceValue = '';
+							$referenceValue = array();
 							foreach($matchOns as $matchOn) {
 								$reference = Tx_Palm_Reflection_ObjectAccess::getPropertyPath($entity, $matchOn);
 								if (is_object($reference) && $reference instanceof DateTime) {
-									$referenceValue .= $reference->format("o-m-d\TH:i:s\Z");
+									$referenceValue[] = $reference->format("o-m-d\TH:i:s\Z");
 								} elseif(is_object($reference)) {
 									// TODO Throw exception
 								} else {
-									$referenceValue .= $reference;
+									$referenceValue[] = $reference;
 								}
 							}
+							$referenceValue = implode('###', $referenceValue);
 							if($referenceValue) {
 								$entityReference[$referenceValue] = array('external' => $entity);
 							}
@@ -528,7 +527,7 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 									$referenceValue[] = $reference;
 								}
 							}
-							$referenceValue = implode('', $referenceValue);
+							$referenceValue = implode('###', $referenceValue);
 							if($referenceValue) {
 								if(is_array($entityReference[$referenceValue])) {
 									$entityReference[$referenceValue]['internal'] = $entity;
@@ -536,6 +535,9 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 									$entityReference[$referenceValue] = array('internal' => $entity);
 								}
 							}
+						}
+						if ($propertyName == 'extras') {
+							$one = 1;
 						}
 						// Determine action for each external-internal pair
 						foreach($entityReference as $entityMap) {
