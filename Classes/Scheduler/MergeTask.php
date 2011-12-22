@@ -48,6 +48,13 @@ class tx_Palm_Scheduler_MergeTask  extends tx_Palm_Scheduler_AbstractTask {
 	protected $fileName;
 
 	/**
+	 * Contains queue
+	 *
+	 * @var string
+	 */
+	protected $queue;
+
+	/**
 	 * Sets $fileName
 	 *
 	 * @param string $fileName
@@ -65,11 +72,33 @@ class tx_Palm_Scheduler_MergeTask  extends tx_Palm_Scheduler_AbstractTask {
 		return $this->fileName;
 	}
 
+	/**
+	 * Sets $queue
+	 *
+	 * @param string $queue
+	 */
+	public function setQueue($queue) {
+		$this->queue = $queue;
+	}
+
+	/**
+	 * Returns $queue
+	 *
+	 * @return string
+	 */
+	public function getQueue() {
+		return $this->queue;
+	}
+
+	/**
+	 *
+	 */
 	protected function prepareGetArguments() {
 		$_GET['id'] = $this->pid;
 		$_GET['tx_' . $this->extensionName . '_' . $this->pluginName] = array(
 			'action' => $this->action,
 			'fileLocation' => $this->fileName,
+			'queue' => $this->queue,
 		);
 	}
 

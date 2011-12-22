@@ -38,6 +38,8 @@ return array(
 	'tx_palm_scheduler_abstracttask' => $extensionClassesPath . 'Scheduler/AbstractTask.php',
 	'tx_palm_scheduler_bootstrap' => $extensionClassesPath . 'Scheduler/Bootstrap.php',
 	'tx_palm_scheduler_mergetask' => $extensionClassesPath . 'Scheduler/MergeTask.php',
+	'tx_palm_scheduler_workerqueue' => $extensionClassesPath . 'Scheduler/WorkerQueue.php',
+	'tx_palm_scheduler_workertask' => $extensionClassesPath . 'Scheduler/WorkerTask.php',
 	'tx_palm_scheduler_taskexception' => $extensionClassesPath . 'Scheduler/TaskException.php',
 	'tx_palm_scheduler_fields_abstractfields' => $extensionClassesPath . 'Scheduler/Fields/AbstractFields.php',
 	'tx_palm_scheduler_fields_mergefields' => $extensionClassesPath . 'Scheduler/Fields/MergeFields.php',

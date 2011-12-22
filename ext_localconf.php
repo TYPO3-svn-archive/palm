@@ -25,6 +25,12 @@ if (t3lib_extMgm::isLoaded('scheduler')) {
 		'description'		=> 'Run palm merge task to merge a configured xml.',
 		'additionalFields'	=> 'tx_Palm_Scheduler_Fields_MergeFields'
 	);
+	$GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['scheduler']['tasks']['tx_Palm_Scheduler_WorkerTask'] = array(
+		'extension'			=> $_EXTKEY,
+		'title'				=> 'Run palm worker task',
+		'description'		=> 'Run palm worker task to update all queued records.',
+		'additionalFields'	=> 'tx_Palm_Scheduler_Fields_AbstractFields'
+	);
 }
 
 ?>

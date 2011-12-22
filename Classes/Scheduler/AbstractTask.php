@@ -93,7 +93,7 @@ class tx_Palm_Scheduler_AbstractTask  extends tx_scheduler_Task {
 		try {
 			$this->dispatch();
 		} catch (Exception $e) {
-			throw new tx_DfauSbt_Solr_SyncTaskException($e->getMessage(), $e->getCode());
+			throw new tx_Palm_Scheduler_TaskException($e->getMessage(), $e->getCode());
 		}
 		return true;
 	}
@@ -112,7 +112,9 @@ class tx_Palm_Scheduler_AbstractTask  extends tx_scheduler_Task {
 	 */
 	protected function dispatch() {
 		$GLOBALS['_SERVER']['REQUEST_METHOD'] = 'GET';
-		$this->prepareGetArguments();
+		if ($this->prepareGetArguments() === false) {
+			return true;
+		}
 		/** @var $dispatcher Tx_Extbase_Core_Bootstrap */
 		$dispatcher = t3lib_div::makeInstance('Tx_Palm_Scheduler_Bootstrap');
 		$dispatcher->callModule('web_PalmTxPalmM1');

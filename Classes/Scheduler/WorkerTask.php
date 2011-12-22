@@ -31,18 +31,27 @@
  * @entity
  * @api
  */
-class tx_Palm_Scheduler_Fields_MergeFields extends  tx_Palm_Scheduler_Fields_AbstractFields {
+class tx_Palm_Scheduler_WorkerTask  extends tx_Palm_Scheduler_AbstractTask {
 
 
-	/**
-	 * Additional fields
-	 *
-	 * @var	array
-	 */
-	protected $fields = array(
-		'pid',
-		'fileName',
-		'queue'
-	);
+
+	protected function prepareGetArguments() {
+		/** @var $workerQueue tx_Palm_Scheduler_WorkerQueue */
+		$workerQueue = t3lib_div::makeInstance('tx_Palm_Scheduler_WorkerQueue');
+		$queuedTask = $workerQueue->getRegisteredRecordActions(1);
+		if (!empty($queuedTask) && isset($queuedTask[0])) {
+			$this->action = ($queuedTask[0]['action'] == tx_Palm_Scheduler_WorkerQueue::ACTION_MERGE) ? 'mergeRecord' : 'importRecord';
+			$_GET['id'] = $this->pid;
+			$_GET['tx_' . $this->extensionName . '_' . $this->pluginName] = array(
+				'action' => $this->action,
+				'fileLocation' => $queuedTask[0]['file_location'],
+				'record' => $queuedTask[0]['foreign_uid'],
+				'isQueued' => '1'
+			);
+			return true;
+		}
+		return false;
+
+	}
 
 }

@@ -23,3 +23,17 @@ CREATE TABLE tx_palm_cache_reflection_tags (
 	KEY cache_id (identifier),
 	KEY cache_tag (tag)
 ) ENGINE=InnoDB;
+
+
+#
+# Table structure for table 'tx_palm_worker_queue'
+#
+CREATE TABLE tx_palm_worker_queue (
+	uid int(11) unsigned DEFAULT '0' NOT NULL auto_increment,
+	tstamp int(11) unsigned DEFAULT '0' NOT NULL,
+	action tinyint(4) unsigned DEFAULT '0' NOT NULL,
+	file_location varchar(255) DEFAULT '' NOT NULL,
+	foreign_uid int(11) unsigned DEFAULT '0' NOT NULL
+
+	PRIMARY KEY (uid)
+);
