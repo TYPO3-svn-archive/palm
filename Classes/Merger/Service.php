@@ -415,6 +415,7 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 
 		$classSchema = $this->reflectionService->getClassSchema($internalEntity);
 		$properties = $classSchema->getProperties();
+		$configuredProperties = array_keys($nestedRules);
 		$propertyNames = array_intersect(Tx_Palm_Reflection_ObjectAccess::getGettablePropertyNames($internalEntity), array_keys($properties));
 		foreach ($propertyNames as $propertyName) {
 			if(in_array($propertyName, array('uid','pid','_localizedUid', '_languageUid', '_cleanProperties', '_isClone'))) {
@@ -495,50 +496,8 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 				} elseif ($scope === self::GETTER_SCOPE_COLLECTION) {
 					$matchOns = t3lib_div::trimExplode(',', $specificRule->getMatchOn());
 					if(!empty($matchOns) && !in_array('.', $matchOns)) {
-						$entityReference = array();
-						// Index external entities by matchons
-						foreach($externalProperty as $entity) {
-							$referenceValue = array();
-							foreach($matchOns as $matchOn) {
-								$reference = Tx_Palm_Reflection_ObjectAccess::getPropertyPath($entity, $matchOn);
-								if (is_object($reference) && $reference instanceof DateTime) {
-									$referenceValue[] = $reference->format("o-m-d\TH:i:s\Z");
-								} elseif(is_object($reference)) {
-									// TODO Throw exception
-								} else {
-									$referenceValue[] = $reference;
-								}
-							}
-							$referenceValue = implode('###', $referenceValue);
-							if($referenceValue) {
-								$entityReference[$referenceValue] = array('external' => $entity);
-							}
-						}
-						// Join internal entities on matchons
-						foreach($internalProperty as $entity) {
-							$referenceValue = array();
-							foreach($matchOns as $matchOn) {
-								$reference = Tx_Palm_Reflection_ObjectAccess::getPropertyPath($entity, $matchOn);
-								if (is_object($reference) && $reference instanceof DateTime) {
-									$referenceValue[] = $reference->format("o-m-d\TH:i:s\Z");
-								} elseif(is_object($reference)) {
-									// TODO Throw exception
-								} else {
-									$referenceValue[] = $reference;
-								}
-							}
-							$referenceValue = implode('###', $referenceValue);
-							if($referenceValue) {
-								if(is_array($entityReference[$referenceValue])) {
-									$entityReference[$referenceValue]['internal'] = $entity;
-								} else {
-									$entityReference[$referenceValue] = array('internal' => $entity);
-								}
-							}
-						}
-						if ($propertyName == 'extras') {
-							$one = 1;
-						}
+						$entityReference = $this->buildReferenceArray(Array(), $externalProperty, $matchOns, 'external');
+						$entityReference = $this->buildReferenceArray($entityReference, $internalProperty, $matchOns, 'internal');
 						// Determine action for each external-internal pair
 						foreach($entityReference as $entityMap) {
 							$entityAction = $this->determineAction($specificRule, self::GETTER_SCOPE_OBJECT, $entityMap['external'], $entityMap['internal']);
@@ -598,6 +557,41 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 				throw new InvalidArgumentException('The given action is not one of the ones defined in Tx_Palm_Merger_RuleInterface::ACTION_* .', 1310637155);
 				break;
 		}
+	}
+
+	protected function buildReferenceArray($entityReference, $objectStorage, $matchOns, $scope) {
+		// Index external entities by matchons
+		foreach($objectStorage as $entity) {
+			$referenceValue = array();
+			foreach($matchOns as $matchOn) {
+				$reference = Tx_Palm_Reflection_ObjectAccess::getPropertyPath($entity, $matchOn);
+				if (is_object($reference) && $reference instanceof DateTime) {
+					$referenceValue[] = $reference->format("o-m-d\TH:i:s\Z");
+				} elseif(is_object($reference)) {
+					// TODO Throw exception
+				} else {
+					$referenceValue[] = $reference;
+				}
+			}
+			$referenceValue = implode('###', $referenceValue);
+			if($referenceValue && isset($entityReference[$referenceValue][$scope])) {
+				$referenceIncrementor = -1;
+				do {
+					$referenceIncrementor++;
+					$referenceFound = isset($entityReference[$referenceValue . '###' .  $referenceIncrementor]);
+				} while($referenceFound);
+				if (!isset($entityReference[$referenceValue])) {
+					$entityReference[$referenceValue . '###' . $referenceIncrementor] = Array();
+				}
+				$entityReference[$referenceValue . '###' . $referenceIncrementor][$scope] = $entity;
+			} else if($referenceValue) {
+				if (!isset($entityReference[$referenceValue])) {
+					$entityReference[$referenceValue] = Array();
+				}
+				$entityReference[$referenceValue][$scope] = $entity;
+			}
+		}
+		return $entityReference;
 	}
 
 }
