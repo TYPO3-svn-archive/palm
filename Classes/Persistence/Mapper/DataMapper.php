@@ -44,14 +44,14 @@ class Tx_Palm_Persistence_Mapper_DataMapper extends Tx_Extbase_Persistence_Mappe
 	 * @param string $propertyName The name of the proxied property in it's parent
 	 * @param mixed $fieldValue The raw field value.
 	 * @param bool $enableLazyLoading A flag indication if the related objects should be lazy loaded
-	 * @param bool $performLanguageOverlay A flag indication if the related objects should be localized
+	 * @param Tx_Extbase_Persistence_QuerySettingsInterface $querySettings Query settings for nested objects
 	 * @return Tx_Extbase_Persistence_LazyObjectStorage|Tx_Extbase_Persistence_QueryResultInterface The result
 	 */
-	public function fetchRelated(Tx_Extbase_DomainObject_DomainObjectInterface $parentObject, $propertyName, $fieldValue = '', $enableLazyLoading = null) {
+	public function fetchRelated(Tx_Extbase_DomainObject_DomainObjectInterface $parentObject, $propertyName, $fieldValue = '', $enableLazyLoading = null, $querySettings = null) {
 		if($enableLazyLoading === null) {
 			$enableLazyLoading = $this->enableLazyLoading;
 		}
-		return parent::fetchRelated($parentObject, $propertyName, $fieldValue, $enableLazyLoading);
+		return parent::fetchRelated($parentObject, $propertyName, $fieldValue, $enableLazyLoading, $querySettings);
 	}
 
 	/**
