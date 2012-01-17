@@ -48,7 +48,7 @@ class Tx_Palm_Persistence_Mapper_DataMapper extends Tx_Extbase_Persistence_Mappe
 	 * @return Tx_Extbase_Persistence_LazyObjectStorage|Tx_Extbase_Persistence_QueryResultInterface The result
 	 */
 	public function fetchRelated(Tx_Extbase_DomainObject_DomainObjectInterface $parentObject, $propertyName, $fieldValue = '', $enableLazyLoading = null, $querySettings = null) {
-		if($enableLazyLoading === null) {
+		if($this->enableLazyLoading === FALSE) {
 			$enableLazyLoading = $this->enableLazyLoading;
 		}
 		return parent::fetchRelated($parentObject, $propertyName, $fieldValue, $enableLazyLoading, $querySettings);
