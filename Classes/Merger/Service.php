@@ -229,20 +229,7 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 		if (!class_exists($rule->getRepositoryName())) {
 			die('PullDataController: This should not happen. The check occurs already in rule builder');
 		}
-		/** @var Tx_Extbase_Object_Container_Container $container */
-		$container = t3lib_div::makeInstance('Tx_Extbase_Object_Container_Container');
-		$container->registerImplementation('Tx_Extbase_Persistence_QueryResultInterface', 'Tx_Palm_Persistence_QueryResult');
-		/** @var Tx_Palm_Persistence_MergerQuerySettings $defaultQuerySettings */
-		$defaultQuerySettings = $this->objectManager->create('Tx_Palm_Persistence_MergerQuerySettings');
-		$defaultQuerySettings->setApplicableRule($rule);
-		$frameworkConfiguration = $this->objectManager
-				->get('Tx_Extbase_Configuration_ConfigurationManagerInterface')
-				->getConfiguration(Tx_Extbase_Configuration_ConfigurationManagerInterface::CONFIGURATION_TYPE_FRAMEWORK);
-		$defaultQuerySettings->setStoragePageIds(t3lib_div::intExplode(',', $frameworkConfiguration['persistence']['storagePid']));
-		/** @var Tx_Extbase_Persistence_Repository $repository */
-		$repository = $this->objectManager->get($rule->getRepositoryName());
-		$repository->setDefaultQuerySettings($defaultQuerySettings);
-		return $repository;
+		return $this->objectManager->create('Tx_Palm_Merger_Repository', $rule);
 	}
 
 	/**

@@ -426,14 +426,16 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 		// We can define also new properties via TS config so we have to consider all properties, even subclassed ones
 		$properties = Array();
 		foreach($classMaps as $classSchemas) {
-			$properties = array_keys($classSchemas['classSchema']->getProperties());
+			$properties = array_merge($properties, array_keys($classSchemas['classSchema']->getProperties()));
+			$className = $classSchemas['classSchema']->getClassName();
+			if (
+				isset($this->configuration['transformIn']['xml']['classes'][$className]['properties']) &&
+				is_array($this->configuration['transformIn']['xml']['classes'][$className]['properties'])
+			) {
+				$properties = array_merge($properties, array_keys($this->configuration['transformIn']['xml']['classes'][$className]['properties']));
+			}
 		}
-		if (
-			isset($this->configuration['transformIn']['xml']['classes'][$class]['properties']) &&
-			is_array($this->configuration['transformIn']['xml']['classes'][$class]['properties'])
-		) {
-			$properties = array_merge($properties, array_keys($this->configuration['transformIn']['xml']['classes'][$class]['properties']));
-		}
+		$properties = array_unique($properties);
 		foreach ($properties as $propertyName) {
 			$tempPropertyValue = $this->transformForInput($bag, $class, $propertyName, $bag[$propertyName]);
 			if ($tempPropertyValue !== NULL && $tempPropertyValue !== '') {
@@ -502,7 +504,7 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 				}
 				break;
 		}
-		if ($propertyType !== NULL & $propertyName !== NULL) {
+		if ($propertyType !== NULL && $propertyName !== NULL) {
 			return array(
 				'type'	=> $propertyType,
 				'name'	=> $propertyName,
