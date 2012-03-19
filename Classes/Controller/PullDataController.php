@@ -86,6 +86,10 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 	public function __construct($pid = NULL) {
 		$this->pid = $pid;
 		$this->wokerQueue = t3lib_div::makeInstance('tx_Palm_Scheduler_WorkerQueue');
+		if (!isset($GLOBALS['TT'])) {
+			require_once(PATH_t3lib.'class.t3lib_timetracknull.php');
+			$GLOBALS['TT'] = new t3lib_timeTrackNull;
+		}
 	}
 
 	/**

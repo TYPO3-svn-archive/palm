@@ -137,9 +137,15 @@ class Tx_Palm_Reflection_ClassSchemaFactory implements t3lib_Singleton {
 		//	$classSchema->setIgnoreUnmappedProperties($this->configuration['ignoreUnmappedProperties']);
 		//}
 
+		$propertyNames = array();
 		foreach ($reflectionClass->getProperties() as $property) {
 			/** @var $property Tx_Extbase_Reflection_PropertyReflection */
-			$propertyName = $property->getName();
+			$propertyNames[] = $property->getName();
+		}
+		$propertyNames = array_merge($propertyNames, array_keys($mappingInformation['properties']));
+		$propertyNames = array_unique($propertyNames);
+
+		foreach ($propertyNames as $propertyName) {
 			if (isset($mappingInformation['properties'][$propertyName])) {
 				$propertyConfiguration = $mappingInformation['properties'][$propertyName];
 				if (isset($propertyConfiguration['wrapperName'])) {

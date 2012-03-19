@@ -300,6 +300,7 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 		if (isset($this->configuration['transformIn']['xml']['classes'][$className]['properties'][$propertyName])) {
 			$propertyTransformationObject = $this->configuration['transformIn'][$format]['classes'][$className]['properties'][$propertyName]['_typoScriptNodeValue'];
 			$propertyTransformation = $this->typoScriptService->convertPlainArrayToTypoScriptArray($this->configuration['transformIn'][$format]['classes'][$className]['properties'][$propertyName]);
+			$sourceArray = $this->flattenSourceArray($sourceArray);
 			// TODO elaborate why this is neccessary
 			$GLOBALS['TSFE']->cObjectDepthCounter = 50;
 			if (!isset($GLOBALS['TSFE']->tmpl)) {
@@ -316,6 +317,28 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 			$value = $this->contentObject->cObjGetSingle($propertyTransformationObject, $propertyTransformation);
 		}
 		return $value;
+	}
+
+	/**
+	 * @param array $labelValues
+	 * @param string $parentKey
+	 * @return array
+	 */
+	protected function flattenSourceArray(array $labelValues, $parentKey = '') {
+		$result = array();
+		foreach ($labelValues as $key => $labelValue) {
+			if (!empty($parentKey)) {
+				$key = $parentKey . '|' . $key;
+			}
+
+			if (is_array($labelValue)) {
+				$labelValue = $this->flattenSourceArray($labelValue, $key);
+				$result = array_merge($result, $labelValue);
+			} else {
+				$result[$key] = $labelValue;
+			}
+		}
+		return $result;
 	}
 
 	/**
@@ -417,7 +440,11 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 						// Oh, nice. We're dealing with a persistence storage
 						$bag[$propertyMapping['name']][] = $propertyMapping['value'];
 					} else {
-						$bag[$propertyMapping['name']] = $propertyMapping['value'];
+						if (isset($propertyMapping['isRaw']) && $propertyMapping['isRaw'] && isset($bag[$propertyMapping['name']]) && $propertyMapping['value']) {
+							$bag[$propertyMapping['name']] .= $propertyMapping['value'];
+						} else {
+							$bag[$propertyMapping['name']] = $propertyMapping['value'];
+						}
 					}
 					break;
 				}
@@ -454,6 +481,37 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 		$propertyType = NULL;
 		$propertyName = NULL;
 		$nodeValue = NULL;
+		$xmlRawValueTypes = $xmlClassSchema->getXmlRawValueTypes();
+		if (!empty($xmlRawValueTypes)) {
+			$rawValue = '';
+			switch($potentialProperty) {
+				case $potentialProperty instanceof DOMAttr:
+					$rawValue = $potentialProperty->value;
+					break;
+				case $potentialProperty instanceof DOMElement:
+					$doc = new DOMDocument();
+					$newNode = $doc->importNode($potentialProperty, true);
+					$doc->appendChild($newNode);
+					$rawValue = $doc->saveXML($newNode);
+					break;
+				case $potentialProperty instanceof DOMText:
+					$rawValue = $potentialProperty->wholeText;
+					break;
+			}
+			$rawValue = trim($rawValue);
+			$rawContentType = $this->getValueType($rawValue);
+			if ($rawValue && $rawContentType) {
+				$rawPropertyName = $xmlClassSchema->getPropertyNameForXmlRawValueType($rawContentType);
+				if ($rawPropertyName) {
+					return array(
+						'type'	=> $rawContentType,
+						'name'	=> $rawPropertyName,
+						'value'	=> $rawValue,
+						'isRaw' => true
+					);
+				}
+			}
+		}
 		switch($potentialProperty) {
 			case $potentialProperty instanceof DOMAttr:
 				$propertyName = $xmlClassSchema->getPropertyNameForXmlAttribute($potentialProperty->name);
@@ -465,9 +523,9 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 				if (!$propertyName) {
 					// Could this be a Wrapper Element?
 					$propertyName = $xmlClassSchema->getPropertyNameForXmlElementWrapper($potentialProperty->tagName);
-					$nodeValue = $this->mapXmlToArray($potentialProperty, $xmlClassSchema->getClassName());
 					// Skip the type parsing. Types are already parsed.
 					if ($propertyName !== NULL) {
+						$nodeValue = $this->mapXmlToArray($potentialProperty, $xmlClassSchema->getClassName());
 						$propertyMeta = $classSchema->getProperty($propertyName);
 						if ($propertyMeta['type'] !== NULL) {
 							return Array(
@@ -482,6 +540,7 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 					if ($this->isAtomicType($propertyType)) {
 						$nodeValue = $this->parseAtomicValue($potentialProperty->textContent, $propertyType);
 					} elseif ($propertyType) {
+						// A new sub element
 						$nodeValue = $this->mapXmlToArray($potentialProperty, $propertyType);
 					}
 				}
