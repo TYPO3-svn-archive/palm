@@ -184,7 +184,11 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 		foreach($xmlClassSchema->getPropertyNames() as $propName) {
 			if ($xmlClassSchema->isXmlNameForProperty($propName)) {
 				$propertyMeta = $classSchema->getProperty($propName);
-				$value = Tx_Extbase_Reflection_ObjectAccess::getProperty($obj, $propName);
+				try {
+					$value = Tx_Extbase_Reflection_ObjectAccess::getProperty($obj, $propName);
+				} catch (Tx_Extbase_Reflection_Exception_PropertyNotAccessibleException $exception) {
+					$value = NULL;
+				}
 				$wrapperName = $xmlClassSchema->getXmlWrapperForProperty($propName);
 				if ($wrapperName) {
 					$tempTarget = $target->appendChild($target->ownerDocument->createElement($wrapperName));
