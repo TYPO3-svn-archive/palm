@@ -202,7 +202,7 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 	/**
 	 * Enter description here ...
 	 * @param Tx_Palm_Merger_AbstractRule $rule
-	 * @return mixed
+	 * @return DOMDocument
 	 */
 	public function getDOMByRule(Tx_Palm_Merger_AbstractRule $rule) {
 		$this->initializeDOMForRule($rule);
@@ -242,6 +242,86 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 		$internalPropertyPath = $this->getPropertyPathFromRule($rule);
 		$internalPropertyValue = Tx_Palm_Reflection_ObjectAccess::getPropertyPath($entity, $internalPropertyPath);
 		return str_replace('{' . $internalPropertyPath . '}', $internalPropertyValue, $rule->getSinglePathInCollection());
+	}
+
+	/**
+	 * @param Tx_Palm_Merger_RootRule $rule
+	 * @return array
+	 */
+	public function getMatchOnValuesByRule(Tx_Palm_Merger_RootRule $rule) {
+		$singlePath = preg_replace('|\{[A-Za-z\.\-\_]+\}|', '###TOKEN###', $rule->getSinglePathInCollection());
+		$matchOnXpath = $this->createMatchOnXPath($singlePath);
+		/** @var DOMXPath $xPath */
+		$xPath = $this->objectManager->create('DOMXPath', $this->getDOMByRule($rule));
+		$xPathQueryResult = $xPath->query($matchOnXpath);
+		$matchOnValues = array();
+		if ($xPathQueryResult->length) {
+			foreach ($xPathQueryResult as $node) {
+				$matchOnValues[] = $node->nodeValue;
+			}
+		}
+		return $matchOnValues;
+	}
+
+	/**
+	 * @param string $xPath
+	 * @return string
+	 */
+	protected function createMatchOnXPath($xPath) {
+		$parser = new Tx_Palm_XPath_Parser();
+		$xPathArray = $parser->parse($xPath);
+		list($cleanXPathArray, $tokenLocationXPathArray) = $this->traverseXPathArrayCleanTokenCondition($xPathArray);
+		$path = array();
+		if (isset($cleanXPathArray['location']) && isset($tokenLocationXPathArray['location'])) {
+			$currentPathStackPosition = 0;
+			foreach ($cleanXPathArray['location'] as $pathPart) {
+				$path[] = $pathPart;
+				if ($pathPart['axis'] == 'parent') {
+					$currentPathStackPosition--;
+				} else {
+					$currentPathStackPosition++;
+				}
+			}
+			$tokenPathStackPosition = count($tokenLocationXPathArray['location']) - 1;
+			while ($currentPathStackPosition > $tokenPathStackPosition) {
+				$lastPath = $path[$currentPathStackPosition - 2];
+				$currentPathStackPosition--;
+				$path[] = array(
+					'axis'  => 'parent',
+					'localName' => $lastPath['localName']
+				);
+			}
+			$tokenPathParts = array_slice($tokenLocationXPathArray['location'], $currentPathStackPosition);
+			foreach ($tokenPathParts as $tokenPathPart) {
+				$path[] = $tokenPathPart;
+			}
+		}
+		$prettyPrinter = new Tx_Palm_XPath_PrettyPrinter();
+		return $prettyPrinter->prettyPrint(array('location' => $path));
+	}
+
+	protected function traverseXPathArrayCleanTokenCondition(array $array, array &$path = array(), &$tokenLocation = array('location')) {
+		$return = array();
+		foreach ($array as $key => $value) {
+			if (is_array($value)) {
+				if (isset($value['axis']) && isset($value['localName'])) {
+					$path['location'][] = array(
+						'axis' => $value['axis'],
+						'localName' => $value['localName']
+					);
+				}
+				$temp = $this->traverseXPathArrayCleanTokenCondition($value, $path, $tokenLocation);
+				$return[$key] = $temp[0];
+			} elseif ($key == 'literal' && $value == '###TOKEN###' && isset($array['location'])) {
+				unset($array['operator']);
+				unset($array['literal']);
+				$tokenLocation = $path;
+				$return = array('location' => $array['location']);
+			} else {
+				$return[$key] = $value;
+			}
+		}
+		return array($return, $tokenLocation);
 	}
 
 	/**

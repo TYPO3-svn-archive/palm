@@ -1,0 +1,312 @@
+<?php
+/***************************************************************
+ *  Copyright notice
+ *
+ *  (c) 2012 Thomas Maroschik <tmaroschik@dfau.de>
+ *  All rights reserved
+ *
+ *  This script is part of the TYPO3 project. The TYPO3 project is
+ *  free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  The GNU General Public License can be found at
+ *  http://www.gnu.org/copyleft/gpl.html.
+ *  A copy is found in the textfile GPL.txt and important notices to the license
+ *  from the author is found in LICENSE.txt distributed with these scripts.
+ *
+ *
+ *  This script is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  This copyright notice MUST APPEAR in all copies of the script!
+ ***************************************************************/
+
+/**
+ * XPath_Parser for PHP from http://github.com/touv/xpath_parser
+ *
+ * @author  Nicolas Thouvenin<nthouvenin@gmail.com>
+ */
+class Tx_Palm_XPath_Parser {
+
+	protected $buffer;
+	protected $pointer;
+	protected $currentChar;
+	protected $nextChar;
+	protected $currentString;
+	protected $outputArray;
+
+	/**
+	 * Constructeur
+	 *
+	 * @param string $xpath
+	 */
+	public function parse($xpath) {
+		$this->buffer  = $xpath;
+		$this->pointer = -1;
+		$this->forward();
+		return $this->getArray();
+	}
+
+	protected function forward($i = 1) {
+		$this->pointer += $i;
+		$this->currentChar   = isset($this->buffer[$this->pointer]) ? $this->buffer[$this->pointer] : null;
+		$this->nextChar      = isset($this->buffer[$this->pointer + 1]) ? $this->buffer[$this->pointer + 1] : '';
+		$this->currentString = substr($this->buffer, $this->pointer);
+	}
+
+	protected function getLocalization() {
+		$a = $this->getArray();
+		return '/' . $this->_scan2($a['location']);
+	}
+
+	protected  function getArray() {
+		if (is_null($this->outputArray)) {
+			$this->outputArray = array();
+			$this->location($this->outputArray);
+		}
+		return $this->outputArray;
+	}
+
+	protected function _scan1(array $a, $z = null) {
+		$previous = $z;
+		foreach ($a as $n) {
+			$node            = new stdClass;
+			$node->localName = $n['localName'];
+			$node->nodeType  = $n['axis'] === 'attribute' ? XMLReader::ATTRIBUTE : XMLReader::ELEMENT;
+			if ($n['axis'] !== 'descendant-or-self') {
+				$node->depth = $n['axis'] === 'attribute' ? $previous->depth : ($previous->depth + 1);
+			}
+			else {
+				$node->mindepth = $previous->depth + 1;
+			}
+
+			if (isset($n['position'])) {
+				$node->position = $n['position'];
+			}
+
+
+			if (isset($n['condition'])) {
+				$node->branchs = array();
+				foreach ($n['condition'] as $c) {
+					$x        = new stdClass;
+					$x->depth = $node->depth;
+					$p        = $this->_scan1($c['location'], $x);
+					if (isset($c['literal'])) {
+						$p->value = $c['literal'];
+					}
+					if (isset($c['operator'])) {
+						$p->operator = $c['operator'];
+					}
+					if (isset($c['logical'])) {
+						$p->logical = $c['logical'];
+					}
+					$node->branchs[] = $x->trunk;
+				}
+			}
+			if (!is_null($previous)) {
+				$previous->trunk = $node;
+			}
+			$previous = $node;
+		}
+		return $node;
+	}
+
+	protected function _scan2(array $a) {
+		$loc = '';
+		foreach ($a as $n) {
+			$loc .= $n['axis'] . '::';
+			$loc .= $n['localName'];
+			if (isset($n['position'])) {
+				$loc .= '[' . $n['position'] . ']';
+			}
+
+			if (isset($n['condition'])) {
+				$loc .= '[';
+				$ope = null;
+				foreach ($n['condition'] as $k => $c) {
+					if ($k > 0 and isset($c['logical'])) {
+						$loc .= ' ' . $c['logical'] . ' ';
+					}
+					if ($k == 0 and isset($c['logical'])) {
+						$ope = $c['logical'];
+					}
+					elseif ($k > 0 and is_null($ope)) {
+						$loc .= ' and ';
+					}
+					elseif ($k > 0 and !is_null($ope)) {
+						$loc .= ' ' . $ope . ' ';
+						$ope = null;
+					}
+
+					$loc .= $this->_scan2($c['location']);
+					if (isset($c['operator'])) {
+						$loc .= ' ' . $c['operator'] . ' ';
+					}
+					if (isset($c['literal'])) {
+						$loc .= '\'' . addcslashes($c['literal'], "'") . '\'';
+					}
+				}
+				$loc .= ']';
+			}
+			$loc .= '/';
+		}
+		return rtrim($loc, '/');
+	}
+
+	protected function location(array &$ret) {
+		$ret['location'] = array();
+		$i               = 0;
+		do {
+			$ret['location'][$i] = array();
+			$ctrl                = $this->axis($ret['location'][$i]);
+			if (is_null($ctrl)) {
+				unset($ret['location'][$i]);
+				break;
+			}
+
+			do {
+				$c1 = $this->position($ret['location'][$i]);
+				$c2 = $this->condition($ret['location'][$i]);
+				if (is_null($c1) and is_null($c2)) {
+					break;
+				}
+			} while (1);
+
+			++$i;
+		} while (1);
+		if ($i === 0) {
+			return null;
+		}
+		else {
+			return true;
+		}
+	}
+
+	protected function axis(array &$ret) {
+		if (preg_match(',^\s*[/]?(child::|attribute::|parent::|self::|descendant-or-self::)([\w\(\):{1}]+),i', $this->currentString, $m)) {
+			$this->forward(strlen($m[0]));
+			$ret['axis']      = trim($m[1], ':/');
+			$ret['localName'] = $m[2];
+
+			return true;
+		}
+		elseif (preg_match(',^\s*(//|[/]?@|\.\./|\./|/)([\w:{1}]+),i', $this->currentString, $m)) {
+			$this->forward(strlen($m[0]));
+			$ret['axis']      = strtr($m[1], array('/@' => 'attribute', '@' => 'attribute', './' => 'self', '//' => 'descendant-or-self', '/' => 'child'));
+			$ret['localName'] = $m[2];
+			return true;
+		}
+		else {
+			return null;
+		}
+	}
+
+	protected function position(array &$ret) {
+		if (preg_match(',^\s*\[([0-9]+)\],', $this->currentString, $m)) { // TODO or [position()=1]
+			$this->forward(strlen($m[0]));
+			$ret['position'] = $m[1];
+			return true;
+		}
+		else {
+			return null;
+		}
+	}
+
+	protected function condition(array &$ret) {
+		if (preg_match(',^\s*\[\s*,', $this->currentString, $m)) {
+			$this->forward(strlen($m[0]));
+
+			if (!isset($ret['condition'])) {
+				$ret['condition'] = array();
+				$i                = 0;
+			}
+			else {
+				$i = count($ret['condition']);
+			}
+			do {
+				$ret['condition'][$i] = array();
+				$ctrl                 = $this->location($ret['condition'][$i]);
+				if (is_null($ctrl)) {
+					unset($ret['condition'][$i]);
+					break;
+				}
+
+				$ctrl = $this->operator($ret['condition'][$i]);
+				if (is_null($ctrl)) {
+					break;
+				}
+
+				$ctrl = $this->literal($ret['condition'][$i]);
+				if (is_null($ctrl)) {
+					break;
+				}
+				$ctrl = $this->logical($ret['condition'][$i]);
+				if (is_null($ctrl)) {
+					break;
+				}
+
+				++$i;
+			} while (1);
+
+			if (preg_match(',^\s*\]\s*,', $this->currentString, $m)) {
+				$this->forward(strlen($m[0]));
+				return true;
+			}
+			else {
+				return null;
+			}
+		}
+		else {
+			return null;
+		}
+	}
+
+	protected function operator(array &$ret) {
+		if (preg_match(',^\s*(<=|<|>=|=|!=)\s*,', $this->currentString, $m)) {
+			$this->forward(strlen($m[0]));
+			$ret['operator'] = $m[1];
+			return true;
+		}
+		else {
+			return null;
+		}
+	}
+
+	protected function literal(array &$ret) {
+		if (preg_match(',^\s*([0-9]+)\s*,', $this->currentString, $m)) {
+			$this->forward(strlen($m[0]));
+			$ret['literal'] = $m[1];
+			return true;
+		}
+		elseif (preg_match("{^\s*[\"]([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)[\"]}x", $this->currentString, $m)) {
+			$this->forward(strlen($m[0]));
+			$ret['literal'] = stripslashes($m[1]);
+			return true;
+		}
+		elseif (preg_match('{ ^\s*[\']([^\'\\\\]*(?:\\\\.[^\'\\\\]*)*)[\']}x', $this->currentString, $m)) {
+			$this->forward(strlen($m[0]));
+			$ret['literal'] = stripslashes($m[1]);
+			return true;
+		}
+		else {
+			return null;
+		}
+	}
+
+	protected function logical(array &$ret) {
+		if (preg_match(',^\s*(and|or)\s*,', $this->currentString, $m)) {
+			$this->forward(strlen($m[0]));
+			if ($m[1] == 'or') {
+				$ret['logical'] = $m[1];
+			}
+			return true;
+		}
+		else {
+			return null;
+		}
+	}
+}

@@ -307,6 +307,8 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 		/** @var $allEntitiesQueryResult Tx_Extbase_Persistence_QueryResult */
 		$allEntitiesQueryResult = $repository->findAll();
 		$query = $allEntitiesQueryResult->getQuery();
+		$matchOnValues = $this->mergerService->getMatchOnValuesByRule($rule);
+		$query->matching($query->in($this->mergerService->getPropertyPathFromRule($rule), $matchOnValues));
 		$offset = 0;
 		$maxOffset = $query->count();
 		$query->setLimit(1);
@@ -320,6 +322,9 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 					$this->wokerQueue->registerActionForRecord(tx_Palm_Scheduler_WorkerQueue::ACTION_MERGE, $fileLocation, $entity->getUid());
 				} else {
 					set_time_limit(240);
+					if ($entity->getTourName()->getId() == 'EOC001') {
+						$one = 1;
+					}
 					$this->mergerService->mergeByRule($entity, $rule);
 					$repository->update($entity);
 					$this->objectManager->get('Tx_Extbase_Persistence_Manager')->persistAll();
