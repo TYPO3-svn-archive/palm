@@ -192,6 +192,9 @@ class Tx_Palm_Reflection_Service {
 				1322488862
 			);
 		}
+		if (!isset($GLOBALS['TYPO3_DB'])) {
+			return;
+		}
 
 		$data = array();
 		$propertyNames = array(
