@@ -149,9 +149,7 @@ class Tx_Palm_Merger_QueryResult implements Tx_Extbase_Persistence_QueryResultIn
 			$this->domNodeCount = count($domNodeList);
 			$offset = ($this->query->getOffset() > 0) ? $this->query->getOffset() : 0;
 			$limit = ($this->query->getLimit() > 0) ? $this->query->getLimit() : $this->domNodeCount;
-			var_dump($offset, $limit);
 			$this->domNodeList = array_slice($domNodeList, $offset, $limit);
-			var_dump($this->domNodeList);
 		}
 	}
 

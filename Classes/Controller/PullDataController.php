@@ -180,8 +180,9 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 	 *
 	 * @param string $fileLocation
 	 * @param string $record
+	 * @param bool $isQueued
 	 */
-	public function importRecordAction($fileLocation, $record) {
+	public function importRecordAction($fileLocation, $record, $isQueued = false) {
 		$rule = $this->mergerService->getPullRuleByFileLocation($fileLocation);
 		$resolvedPath = str_replace(
 			'{' . $this->mergerService->getPropertyPathFromRule($rule) . '}',
@@ -193,27 +194,16 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 		$querySettings->setStoragePageIds(array($this->pid));
 		$repository = $this->mergerService->getRepositoryByRule($rule);
 		$repository->setDefaultQuerySettings($querySettings);
-		$externalEntity = $this->mergerService->getExternalEntityByExternalPath(
+		$entity = $this->mergerService->getExternalEntityByExternalPath(
 			$this->mergerService->getDOMByRule($rule),
 			$resolvedPath,
 			$rule->getEntityName()
 		);
-		$repository->add($externalEntity);
+		$repository->add($entity);
 		$this->objectManager->get('Tx_Extbase_Persistence_Manager')->persistAll();
-		$parent = t3lib_div::makeInstance('t3lib_TCEmain');
-		foreach ($this->hookObjectsArr as $hookObj) {
-			if (method_exists($hookObj, 'processDatamap_afterDatabaseOperations')) {
-				/** @var Tx_Extbase_Persistence_Mapper_DataMap $dataMap */
-				$dataMap = $this->objectManager->get('Tx_Palm_Persistence_Mapper_DataMapper')->getDataMap(get_class($externalEntity));
-				$parent->substNEWwithIDs = Array(
-					$externalEntity->getUid() => $externalEntity->getUid()
-				);
-				$fieldArray = Array(
-					'uid'	=> $externalEntity->getUid(),
-					'pid'	=> $externalEntity->getPid()
-				);
-				$hookObj->processDatamap_afterDatabaseOperations('new', $dataMap->getTableName(), $externalEntity->getUid(), $fieldArray, $parent);
-			}
+		$this->callProcessDatamapAfterDatabaseOperationsHook(get_class($entity), $entity->getUid(), $entity->getPid());
+		if ($isQueued) {
+			$this->wokerQueue->unregisterRecord($fileLocation, $record);
 		}
 		$this->flashMessageContainer->add('All records have been successfully merged!', t3lib_FlashMessage::OK);
 		$this->redirectToURI(t3lib_div::sanitizeLocalUrl(t3lib_div::getIndpEnv('HTTP_REFERER')));
@@ -223,8 +213,9 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 	 * Enter description here ...
 	 *
 	 * @param string $fileLocation
+	 * @param bool $isQueued
 	 */
-	public function importAllRecordsAction($fileLocation) {
+	public function importAllRecordsAction($fileLocation, $queue = NULL) {
 		$container = t3lib_div::makeInstance('Tx_Extbase_Object_Container_Container');
 		$container->registerImplementation('Tx_Extbase_Persistence_Typo3QuerySettings', 'Tx_Palm_Persistence_MergerQuerySettings');
 		$this->objectManager->get('Tx_Palm_Persistence_Mapper_DataMapper')->setEnableLazyLoading(false);
@@ -235,32 +226,19 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 		$repository = $this->mergerService->getRepositoryByRule($rule);
 		$repository->setDefaultQuerySettings($querySettings);
 		$xmlRepository = $this->mergerService->getXmlRepositoryByRule($rule);
-		$added = Array();
+		if (!$queue) {
+			$this->objectManager->get('Tx_Palm_Persistence_Mapper_DataMapper')->setEnableLazyLoading(false);
+		}
 		foreach($xmlRepository->findAll() as $entity) {
 			if (!$this->mergerService->isEntityAlreadyPresent($rule, $entity)) {
-				$repository->add($entity);
-				$added[] = $entity;
-				if (count($added) % 20 == 0) {
-					$this->objectManager->get('Tx_Extbase_Persistence_Manager')->persistAll();
+				if ($queue) {
+					$this->wokerQueue->registerActionForRecord(tx_Palm_Scheduler_WorkerQueue::ACTION_MERGE, $fileLocation, $entity->getUid());
+				} else {
+					set_time_limit(240);
+					$repository->add($entity);
 				}
-			}
-		}
-		$this->objectManager->get('Tx_Extbase_Persistence_Manager')->persistAll();
-		$parent = t3lib_div::makeInstance('t3lib_TCEmain');
-		foreach ($this->hookObjectsArr as $hookObj) {
-			if (method_exists($hookObj, 'processDatamap_afterDatabaseOperations')) {
-				foreach ($added as $externalEntity) {
-					/** @var Tx_Extbase_Persistence_Mapper_DataMap $dataMap */
-					$dataMap = $this->objectManager->get('Tx_Palm_Persistence_Mapper_DataMapper')->getDataMap(get_class($externalEntity));
-					$parent->substNEWwithIDs = Array(
-						$externalEntity->getUid()=> $externalEntity->getUid()
-					);
-					$fieldArray = Array(
-						'uid'	=> $externalEntity->getUid(),
-						'pid'	=> $externalEntity->getPid()
-					);
-					$hookObj->processDatamap_afterDatabaseOperations('new', $dataMap->getTableName(), $externalEntity->getUid(), $fieldArray, $parent);
-				}
+				$this->objectManager->get('Tx_Extbase_Persistence_Manager')->persistAll();
+				$this->callProcessDatamapAfterDatabaseOperationsHook(get_class($entity), $entity->getUid(), $entity->getPid());
 			}
 		}
 		$this->flashMessageContainer->add('All records have been successfully merged!', t3lib_FlashMessage::OK);
@@ -322,9 +300,6 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 					$this->wokerQueue->registerActionForRecord(tx_Palm_Scheduler_WorkerQueue::ACTION_MERGE, $fileLocation, $entity->getUid());
 				} else {
 					set_time_limit(240);
-					if ($entity->getTourName()->getId() == 'EOC001') {
-						$one = 1;
-					}
 					$this->mergerService->mergeByRule($entity, $rule);
 					$repository->update($entity);
 					$this->objectManager->get('Tx_Extbase_Persistence_Manager')->persistAll();

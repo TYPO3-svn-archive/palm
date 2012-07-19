@@ -19,6 +19,12 @@ $TYPO3_CONF_VARS['FE']['eID_include']['SchemaGenerator'] = 'EXT:palm/Classes/Uti
 $TYPO3_CONF_VARS['SC_OPTIONS']['t3lib/class.t3lib_tceforms.php']['getMainFieldsClass'][]='EXT:palm/Classes/Hook/TCEForms.php:tx_Palm_Hook_TCEForms';
 
 if (t3lib_extMgm::isLoaded('scheduler')) {
+	$GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['scheduler']['tasks']['tx_Palm_Scheduler_ImportTask'] = array(
+		'extension'			=> $_EXTKEY,
+		'title'				=> 'Run palm import task',
+		'description'		=> 'Run palm import task to import a configured xml.',
+		'additionalFields'	=> 'tx_Palm_Scheduler_Fields_ImportFields'
+	);
 	$GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['scheduler']['tasks']['tx_Palm_Scheduler_MergeTask'] = array(
 		'extension'			=> $_EXTKEY,
 		'title'				=> 'Run palm merge task',
