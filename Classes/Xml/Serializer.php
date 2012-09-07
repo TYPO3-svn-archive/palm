@@ -467,10 +467,18 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 			}
 		}
 		$properties = array_unique($properties);
+		$transformedProperties = array();
 		foreach ($properties as $propertyName) {
 			$tempPropertyValue = $this->transformForInput($bag, $class, $propertyName, $bag[$propertyName]);
 			if ($tempPropertyValue !== NULL && $tempPropertyValue !== '') {
-				$bag[$propertyName] = $tempPropertyValue;
+				$transformedProperties[$propertyName] = $tempPropertyValue;
+			}
+		}
+		foreach($transformedProperties as $key=>$value) {
+			if ($value === 'DELETE') {
+				unset($bag[$key]);
+			} else {
+				$bag[$key] = $value;
 			}
 		}
 		return $bag;
