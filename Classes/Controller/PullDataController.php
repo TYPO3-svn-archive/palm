@@ -146,11 +146,7 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 	 */
 	public function selectRecordAction($fileLocation, $currentPage = 1) {
 		$rule = $this->mergerService->getPullRuleByFileLocation($fileLocation);
-		/** @var Tx_Extbase_Persistence_Typo3QuerySettings $querySettings */
-		$querySettings = $this->objectManager->create('Tx_Extbase_Persistence_Typo3QuerySettings');
-		$querySettings->setStoragePageIds(array($this->pid));
-		$repository = $this->mergerService->getRepositoryByRule($rule);
-		$repository->setDefaultQuerySettings($querySettings);
+		$repository = $this->getRepositoryByRule($rule);
 		$repository->setDefaultOrderings(Array(
 			'uid' => Tx_Extbase_Persistence_QueryInterface::ORDER_ASCENDING,
 		));
@@ -189,11 +185,7 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 			$record,
 			$rule->getSinglePathInCollection()
 		);
-		/** @var Tx_Extbase_Persistence_Typo3QuerySettings $querySettings */
-		$querySettings = $this->objectManager->create('Tx_Extbase_Persistence_Typo3QuerySettings');
-		$querySettings->setStoragePageIds(array($this->pid));
-		$repository = $this->mergerService->getRepositoryByRule($rule);
-		$repository->setDefaultQuerySettings($querySettings);
+		$repository = $this->getRepositoryByRule($rule);
 		$entity = $this->mergerService->getExternalEntityByExternalPath(
 			$this->mergerService->getDOMByRule($rule),
 			$resolvedPath,
@@ -220,11 +212,7 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 		$container->registerImplementation('Tx_Extbase_Persistence_Typo3QuerySettings', 'Tx_Palm_Persistence_MergerQuerySettings');
 		$this->objectManager->get('Tx_Palm_Persistence_Mapper_DataMapper')->setEnableLazyLoading(false);
 		$rule = $this->mergerService->getPullRuleByFileLocation($fileLocation);
-		/** @var Tx_Extbase_Persistence_Typo3QuerySettings $querySettings */
-		$querySettings = $this->objectManager->create('Tx_Extbase_Persistence_Typo3QuerySettings');
-		$querySettings->setStoragePageIds(array($this->pid));
-		$repository = $this->mergerService->getRepositoryByRule($rule);
-		$repository->setDefaultQuerySettings($querySettings);
+		$repository = $this->getRepositoryByRule($rule);
 		$xmlRepository = $this->mergerService->getXmlRepositoryByRule($rule);
 		if (!$queue) {
 			$this->objectManager->get('Tx_Palm_Persistence_Mapper_DataMapper')->setEnableLazyLoading(false);
@@ -344,6 +332,7 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 	protected function getRepositoryByRule(Tx_Palm_Merger_RootRule $rule) {
 		/** @var Tx_Extbase_Persistence_Typo3QuerySettings $querySettings */
 		$querySettings = $this->objectManager->create('Tx_Extbase_Persistence_Typo3QuerySettings');
+		$querySettings->setRespectEnableFields(false);
 		$querySettings->setStoragePageIds(array($this->pid));
 		$repository = $this->mergerService->getRepositoryByRule($rule);
 		$repository->setDefaultQuerySettings($querySettings);
@@ -379,7 +368,7 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 			$tableName = key($edit);
 			$recordIdentifier = key(current($edit));
 			$record = t3lib_BEfunc::getRecord($tableName, $recordIdentifier, 'pid');
-			$pid = $record['pid'];
+			$pid = $record['pid'] ?: 0;
 			$configuration = $this->configurationManager->getConfiguration(Tx_Extbase_Configuration_ConfigurationManagerInterface::CONFIGURATION_TYPE_FRAMEWORK);
 			$classMapping = $configuration['persistence']['classes'];
 			if ($classMapping && !empty($classMapping)) {
@@ -418,13 +407,13 @@ class Tx_Palm_Controller_PullDataController extends Tx_Extbase_MVC_Controller_Ac
 	 * @param int $recordIdentifier
 	 * @return void|string
 	 */
-	public function testRecordAction($pid, $entityNames = array(), $recordIdentifier = null) {
+	public function testRecordAction($pid = 0, $entityNames = array(), $recordIdentifier = null) {
 		if(empty($entityNames) || !$recordIdentifier) return '';
 		foreach ($entityNames as $entityName) {
 			$rules = $this->mergerService->getPullRulesByEntityName($entityName);
 			$this->uriBuilder->setArguments(array('M' => 'web_PalmTxPalmM1', 'id' => $pid));
 			foreach($rules as $fileLocation => $rule) {
-				$repository = $this->mergerService->getRepositoryByRule($rule);
+				$repository = $this->getRepositoryByRule($rule);
 				$entity = $repository->findByUid($recordIdentifier);
 				if($entity !== null && $this->mergerService->isRuleApplicableOnEntity($rule, $entity)) {
 					$this->flashMessageContainer->add(
