@@ -628,9 +628,14 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 
 	protected function buildReferenceArray($entityReference, $objectStorage, $matchOns, $scope) {
 		// Index external entities by matchons
+		$position = 1;
 		foreach($objectStorage as $entity) {
 			$referenceValue = array();
 			foreach($matchOns as $matchOn) {
+				if ($matchOn === '_position') {
+					$referenceValue[] = $position;
+					continue;
+				}
 				$reference = Tx_Palm_Reflection_ObjectAccess::getPropertyPath($entity, $matchOn);
 				if (is_object($reference) && $reference instanceof DateTime) {
 					$referenceValue[] = $reference->format("o-m-d\TH:i:s\Z");
@@ -657,6 +662,7 @@ class Tx_Palm_Merger_Service implements Tx_Palm_Merger_ServiceInterface {
 				}
 				$entityReference[$referenceValue][$scope] = $entity;
 			}
+			$position++;
 		}
 		return $entityReference;
 	}
