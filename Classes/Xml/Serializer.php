@@ -160,11 +160,11 @@ class Tx_Palm_Xml_Serializer implements t3lib_Singleton {
 	 * @param Object $obj
 	 * @return DOMDocument
 	 */
-	public function serialize($obj) {
+	public function serialize($obj, $rootName = NULL) {
 		$classSchema = $this->palmReflectionService->getClassSchema($obj);
 		/** @var Tx_Palm_DOM_Document $doc */
 		$doc = $this->objectManager->create('Tx_Palm_DOM_Document');
-		$root = $doc->createElement($classSchema->getXmlRootName());
+		$root = $doc->createElement($rootName ?: $classSchema->getXmlRootName());
 		$doc->appendChild($root);
 		$this->serializeObject($obj, $root);
 		return $doc;

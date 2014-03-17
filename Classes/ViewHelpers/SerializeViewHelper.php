@@ -48,13 +48,14 @@ class Tx_Palm_ViewHelpers_SerializeViewHelper extends Tx_Fluid_Core_ViewHelper_A
 
 	/**
 	 * @param mixed $target
+	 * @param string $rootName
 	 * @return void
 	 */
-	public function render($target) {
+	public function render($target, $rootName = NULL) {
 		if ($target instanceof Tx_Extbase_Persistence_LoadingStrategyInterface) {
 			$target = $target->_loadRealInstance();
 		}
-		$document = $this->xmlSerializer->serialize($target);
+		$document = $this->xmlSerializer->serialize($target, $rootName);
 		if ($document) {
 			$result = '';
 			foreach ($document->childNodes as $childNode) {
